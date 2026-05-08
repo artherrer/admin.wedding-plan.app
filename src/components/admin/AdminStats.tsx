@@ -43,8 +43,10 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
   const acompConfirmados = acompanantes.filter(
     (a) => a.guest?.documentId && docIdsConfirmados.has(a.guest.documentId)
   ).length;
-  const totalConfirmados = invitados.filter((i) => i.status === "yes").length + acompConfirmados;
-  const totalNoConfirmados = invitados.filter((i) => i.status === "no").length;
+  const totalConfirmados = invitados.filter((i) => i.status === "yes").length;
+  const totalConfirmadosPersonas = totalConfirmados + acompConfirmados;
+  const totalRechazados = invitados.filter((i) => i.status === "no").length;
+  const totalPendientes = invitados.filter((i) => i.status === "pending").length;
 
   const totalPersonas = invitados.length + acompanantes.length;
 
@@ -123,8 +125,8 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-sm sm:text-base">% Con Mesa</span>
               <span className="text-xl sm:text-2xl text-blue-400 font-bold">
-                {totalConfirmados > 0
-                  ? ((personasConMesa / totalConfirmados) * 100).toFixed(0)
+                {totalConfirmadosPersonas > 0
+                  ? ((personasConMesa / totalConfirmadosPersonas) * 100).toFixed(0)
                   : 0}%
               </span>
             </div>
@@ -152,8 +154,14 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
             </div>
             <div className="flex justify-between items-center pb-3 border-b border-gray-700">
               <span className="text-gray-400 text-sm sm:text-base">Sin Confirmar</span>
+              <span className="text-xl sm:text-2xl text-orange-400 font-bold">
+                {totalPendientes}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+              <span className="text-gray-400 text-sm sm:text-base">Rechazadas</span>
               <span className="text-xl sm:text-2xl text-red-400 font-bold">
-                {totalNoConfirmados}
+                {totalRechazados}
               </span>
             </div>
             <div className="flex justify-between items-center pb-3 border-b border-gray-700">

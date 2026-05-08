@@ -7,21 +7,23 @@ import {
   eventService,
 } from "../lib/services";
 import { token } from "../lib/api";
-import type { Guest, Table, Companion, StrapiUser, Event } from "../lib/types";
-import { Users, Table2, CheckCircle, XCircle, LogOut, ChevronDown, Calendar } from "lucide-react";
+import type { Guest, Table, Companion, StrapiUser, Event, EventChecklistItem } from "../lib/types";
+import { Users, Table2, CheckCircle, XCircle, LogOut, ChevronDown, Calendar, ListChecks } from "lucide-react";
 import AdminStats from "./admin/AdminStats";
 import GuestManagement from "./admin/GuestManagement";
 import TableManagement from "./admin/TableManagement";
+import TodoManagement from "./admin/TodoManagement";
 
 const MAIN_EVENT_ID = import.meta.env.VITE_EVENT_ID as string | undefined;
 
-type TabType = "stats" | "guests" | "tables";
+type TabType = "stats" | "guests" | "tables" | "todos";
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>("stats");
   const [invitados, setInvitados] = useState<Guest[]>([]);
   const [mesas, setMesas] = useState<Table[]>([]);
   const [acompanantes, setAcompanantes] = useState<Companion[]>([]);
+  const [todos, setTodos] = useState<EventChecklistItem[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<StrapiUser | null>(null);
   const [eventDocumentId, setEventDocumentId] = useState<string | null>(null);
@@ -65,14 +67,16 @@ export default function AdminPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [invitadosData, mesasData, acompData] = await Promise.all([
+      const [invitadosData, mesasData, acompData, todosData] = await Promise.all([
         guestService.getAll(eventDocumentId ?? undefined),
         tableService.getAll(eventDocumentId ?? undefined),
         companionService.getAll(eventDocumentId ?? undefined),
+        eventService.getTodos(eventDocumentId ?? undefined),
       ]);
       setInvitados(invitadosData);
       setMesas(mesasData);
       setAcompanantes(acompData);
+      setTodos(todosData);
     } catch (err) {
       console.error("Error loading data:", err);
     }
@@ -84,19 +88,12 @@ export default function AdminPage() {
     }
   }, [isLoggedIn, eventDocumentId, loadData]);
 
-  const idsConfirmados = new Set(
-    invitados.filter((i) => i.status === "yes").map((i) => i.documentId),
-  );
-  const acompConfirmados = acompanantes.filter(
-    (a) => a.guest?.documentId && idsConfirmados.has(a.guest.documentId),
-  ).length;
-
   const stats = {
     totalInvitados: invitados.length,
     totalPersonas: invitados.length + acompanantes.length,
-    confirmados:
-      invitados.filter((i) => i.status === "yes").length + acompConfirmados,
-    noConfirmados: invitados.filter((i) => i.status === "no").length,
+    confirmados: invitados.filter((i) => i.status === "yes").length,
+    rechazados: invitados.filter((i) => i.status === "no").length,
+    noConfirmados: invitados.filter((i) => i.status === "pending").length,
     pasesConfirmados: invitados.reduce((sum, i) => sum + i.confirmed_passes, 0),
     conMesa: invitados.filter((i) => i.table != null).length,
   };
@@ -137,6 +134,7 @@ export default function AdminPage() {
     setInvitados([]);
     setMesas([]);
     setAcompanantes([]);
+    setTodos([]);
     setIsSelectingEvent(false);
   };
 
@@ -148,6 +146,7 @@ export default function AdminPage() {
     setInvitados([]);
     setMesas([]);
     setAcompanantes([]);
+    setTodos([]);
   };
 
   const handleLogout = () => {
@@ -161,6 +160,7 @@ export default function AdminPage() {
     setInvitados([]);
     setMesas([]);
     setAcompanantes([]);
+    setTodos([]);
   };
 
   const handleRefresh = () => {
@@ -350,7 +350,7 @@ export default function AdminPage() {
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 sm:p-6 rounded-xl text-white">
             <Users className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
             <div className="text-xl sm:text-3xl font-bold">
@@ -370,12 +370,20 @@ export default function AdminPage() {
             <div className="text-xs sm:text-sm opacity-80">Confirmados</div>
           </div>
 
-          <div className="bg-gradient-to-br from-red-600 to-red-700 p-4 sm:p-6 rounded-xl text-white">
+          <div className="bg-gradient-to-br from-orange-600 to-orange-700 p-4 sm:p-6 rounded-xl text-white">
             <XCircle className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
             <div className="text-xl sm:text-3xl font-bold">
               {stats.noConfirmados}
             </div>
             <div className="text-xs sm:text-sm opacity-80">Sin Confirmar</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-red-600 to-red-700 p-4 sm:p-6 rounded-xl text-white">
+            <XCircle className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
+            <div className="text-xl sm:text-3xl font-bold">
+              {stats.rechazados}
+            </div>
+            <div className="text-xs sm:text-sm opacity-80">Rechazadas</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-4 sm:p-6 rounded-xl text-white">
@@ -431,6 +439,25 @@ export default function AdminPage() {
           >
             Mesas
           </button>
+
+          <button
+            onClick={() => setActiveTab("todos")}
+            className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-light transition-colors flex items-center justify-center gap-2 ${
+              activeTab === "todos"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            <ListChecks className="w-4 h-4" />
+            Checklist
+            {todos.length > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                activeTab === "todos" ? "bg-blue-500" : "bg-gray-600"
+              }`}>
+                {todos.filter((t) => !t.checked).length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* CONTENT */}
@@ -461,6 +488,10 @@ export default function AdminPage() {
             eventDocumentId={eventDocumentId}
             onRefresh={handleRefresh}
           />
+        )}
+
+        {activeTab === "todos" && (
+          <TodoManagement todos={todos} onRefresh={handleRefresh} />
         )}
       </div>
     </div>

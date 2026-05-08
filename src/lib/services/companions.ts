@@ -20,7 +20,7 @@ export async function getAll(eventDocumentId?: string): Promise<Companion[]> {
       ...ALL,
       ...POPULATE,
       'sort': 'full_name:asc',
-      ...(eventDocumentId && { 'filters[event][documentId][$eq]': eventDocumentId }),
+      ...(eventDocumentId && { 'filters[guest][event][documentId][$eq]': eventDocumentId }),
     },
   });
   return many(res);

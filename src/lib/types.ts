@@ -2,6 +2,67 @@
 // Las respuestas son planas (sin wrapper "attributes") y usan documentId como
 // identificador estable para mutaciones y relaciones.
 
+// ─── Checklist Template ──────────────────────────────────────────────────────
+
+export interface ChecklistTemplate extends StrapiBase {
+  title: string;
+  slug: string;
+  description?: string | null;
+  type: "wedding" | "birthday" | "corporate";
+  isDefault: boolean;
+  sections?: ChecklistSection[];
+}
+
+// ─── Checklist Section ───────────────────────────────────────────────────────
+
+export interface ChecklistSection extends StrapiBase {
+  title: string;
+  description?: string | null;
+  order: number;
+  template?: Pick<ChecklistTemplate, "id" | "documentId" | "title"> | null;
+  items?: ChecklistTemplateItem[];
+}
+
+// ─── Checklist Template Item ─────────────────────────────────────────────────
+
+export interface ChecklistTemplateItem extends StrapiBase {
+  title: string;
+  description?: string | null;
+  order: number;
+  required: boolean;
+  estimatedDaysBeforeEvent?: number | null;
+  section?: Pick<
+    ChecklistSection,
+    "id" | "documentId" | "title" | "order"
+  > | null;
+}
+
+// ─── Event Checklist Item ────────────────────────────────────────────────────
+
+export interface EventChecklistItem extends StrapiBase {
+  // Snapshot del template
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  order: number; // Estado
+  checked: boolean;
+  checkedAt?: string | null;
+  dueDate?: string | null;
+  notes?: string | null;
+  priority?: "low" | "medium" | "high";
+  isCustom?: boolean;
+  hidden?: boolean; // Relaciones
+  event?: Pick<Event, "id" | "documentId" | "name"> | null;
+  templateItem?:
+    | (Pick<ChecklistTemplateItem, "id" | "documentId" | "title" | "order"> & {
+        section?: Pick<
+          ChecklistSection,
+          "id" | "documentId" | "title" | "order"
+        > | null;
+      })
+    | null;
+  attachments?: StrapiMedia[] | null;
+}
 export interface StrapiBase {
   id: number;
   documentId: string;
@@ -73,6 +134,8 @@ export interface Event extends StrapiBase {
   locations?: Location[];
   is_manageable?: boolean;
   whatsapp_message?: string | null;
+  template?: ChecklistTemplate | null;
+  checklistItems?: EventChecklistItem[];
 }
 
 // ─── Companion ───────────────────────────────────────────────────────────────
