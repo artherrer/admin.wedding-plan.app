@@ -84,7 +84,7 @@ function exportCSV(
   mesas: Table[],
   acompanantes: Companion[],
 ) {
-  const mesaMap = new Map(mesas.map((m) => [m.documentId, m.number]));
+  const mesaMap = new Map(mesas.map((m) => [m.documentId, m.name]));
   const acompPorInvitado = acompanantes.reduce<Record<string, Companion[]>>(
     (acc, a) => {
       const guestDocId = a.guest?.documentId;
@@ -173,6 +173,8 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
+const inputCls = "w-full px-4 py-2 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none";
+
 export default function GuestManagement({
   invitados,
   mesas,
@@ -195,7 +197,6 @@ export default function GuestManagement({
 
   const [search, setSearch] = useState("");
 
-  // Acompañantes locales keyed by invitado.documentId
   const [acompanantes, setAcompanantes] = useState<Record<string, Companion[]>>(
     {},
   );
@@ -212,7 +213,6 @@ export default function GuestManagement({
   });
   const [savingAcompEdit, setSavingAcompEdit] = useState(false);
 
-  // ── Filtro ──────────────────────────────────────────────────────────
   const q = search.trim().toLowerCase();
   const invitadosFiltrados = q
     ? invitados.filter((inv) => {
@@ -228,7 +228,6 @@ export default function GuestManagement({
           a.full_name.toLowerCase().localeCompare(b.full_name.toLowerCase()),
         );
 
-  // ── Invitados CRUD ──────────────────────────────────────────────────
   const startEdit = (invitado: Guest) => {
     setEditingId(invitado.documentId);
     setFormData(invitado);
@@ -418,7 +417,6 @@ export default function GuestManagement({
     }
   };
 
-  // ── Acompañantes ─────────────────────────────────────────────────────
   const toggleExpand = async (invitadoDocId: string) => {
     if (expandedId === invitadoDocId) {
       setExpandedId(null);
@@ -501,7 +499,6 @@ export default function GuestManagement({
     }
   };
 
-  // ── Edición de acompañante ────────────────────────────────────────────
   const startEditAcomp = (a: Companion) => {
     setEditingAcompId(a.documentId);
     setShowAcompForm(null);
@@ -542,7 +539,7 @@ export default function GuestManagement({
     <div className="space-y-6">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-xl sm:text-2xl text-white font-light">
+        <h2 className="text-xl sm:text-2xl text-charcoal dark:text-white font-light">
           Gestión de Invitados
         </h2>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -580,18 +577,18 @@ export default function GuestManagement({
 
       {/* BÚSQUEDA */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted dark:text-gray-400" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar invitado o acompañante..."
-          className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none text-sm"
+          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-700 focus:border-blue-500 focus:outline-none text-sm placeholder-muted/50 dark:placeholder-gray-500"
         />
         {search && (
           <button
             onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted dark:text-gray-400 hover:text-charcoal dark:hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
@@ -600,13 +597,13 @@ export default function GuestManagement({
 
       {/* FORM INVITADO */}
       {showForm && (
-        <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700 mb-6">
-          <h3 className="text-base sm:text-lg text-white font-light mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700 mb-6">
+          <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
             {newGuest ? "Nuevo Invitado" : "Editar Invitado"}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Nombre Completo
               </label>
               <input
@@ -615,11 +612,11 @@ export default function GuestManagement({
                 onChange={(e) =>
                   setFormData({ ...formData, full_name: e.target.value })
                 }
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Número Telefónico
               </label>
               <input
@@ -629,11 +626,11 @@ export default function GuestManagement({
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 placeholder="+52 123456789"
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Pases Máximos
               </label>
               <input
@@ -646,11 +643,11 @@ export default function GuestManagement({
                   })
                 }
                 min="1"
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Pases Confirmados
               </label>
               <input
@@ -664,11 +661,11 @@ export default function GuestManagement({
                 }
                 min="0"
                 max={formData.max_passes || 1}
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Confirmado
               </label>
               <select
@@ -679,7 +676,7 @@ export default function GuestManagement({
                     status: e.target.value as "pending" | "yes" | "no",
                   })
                 }
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               >
                 <option value="pending">Sin confirmar</option>
                 <option value="yes">Sí</option>
@@ -687,13 +684,13 @@ export default function GuestManagement({
               </select>
             </div>
             <div>
-              <label className="text-sm text-gray-400 block mb-2">Nota</label>
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">Nota</label>
               <textarea
                 value={formData.note || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, note: e.target.value })
                 }
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className={inputCls}
               />
             </div>
           </div>
@@ -708,7 +705,7 @@ export default function GuestManagement({
             </button>
             <button
               onClick={cancelEdit}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-6 py-2 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors w-full sm:w-auto"
             >
               <X className="w-5 h-5" />
               Cancelar
@@ -718,29 +715,16 @@ export default function GuestManagement({
       )}
 
       {/* TABLE */}
-      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blush-dark dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] text-left text-sm">
-            <thead className="bg-gray-700 border-b border-gray-600">
+            <thead className="bg-linen dark:bg-gray-700 border-b border-blush-dark dark:border-gray-600">
               <tr>
-                <th className="px-4 sm:px-6 py-3 sm:py-4 text-gray-300 font-light">
-                  Nombre
-                </th>
-                <th className="px-4 sm:px-6 py-3 sm:py-4 text-gray-300 font-light">
-                  Teléfono
-                </th>
-                <th className="px-4 sm:px-6 py-3 sm:py-4 text-gray-300 font-light">
-                  Código
-                </th>
-                <th className="px-4 sm:px-6 py-3 sm:py-4 text-gray-300 font-light">
-                  Pases
-                </th>
-                <th className="px-4 sm:px-6 py-3 sm:py-4 text-gray-300 font-light">
-                  Confirmado
-                </th>
-                <th className="px-4 sm:px-6 py-3 sm:py-4 text-gray-300 font-light">
-                  Acciones
-                </th>
+                {["Nombre", "Teléfono", "Código", "Pases", "Confirmado", "Acciones"].map((h) => (
+                  <th key={h} className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal/75 dark:text-gray-300 font-light">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -748,43 +732,43 @@ export default function GuestManagement({
                 <>
                   <tr
                     key={invitado.documentId}
-                    className="border-b border-gray-700 hover:bg-gray-700/50"
+                    className="border-b border-blush-dark/50 dark:border-gray-700 hover:bg-linen/50 dark:hover:bg-gray-700/50"
                   >
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-white">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal dark:text-white">
                       {invitado.full_name}
                     </td>
 
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-gray-400">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4">
                       {invitado.phone ? (
-                        <span className="text-blue-400 break-all">
+                        <span className="text-blue-500 dark:text-blue-400 break-all">
                           {invitado.phone}
                         </span>
                       ) : (
-                        <span className="text-gray-500 italic">
+                        <span className="text-muted/70 dark:text-gray-500 italic">
                           No registrado
                         </span>
                       )}
                     </td>
 
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-gray-400 font-mono text-xs sm:text-sm break-all">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-muted dark:text-gray-400 font-mono text-xs sm:text-sm break-all">
                       {invitado.unique_code}
                     </td>
 
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-gray-400">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-muted dark:text-gray-400">
                       {invitado.confirmed_passes}/{invitado.max_passes}
                     </td>
 
                     <td className="px-4 sm:px-6 py-3 sm:py-4">
                       {invitado.status === "yes" ? (
-                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-green-600/30 text-green-300">
+                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-green-600/20 text-green-700 dark:text-green-300">
                           Sí
                         </span>
                       ) : invitado.status === "no" ? (
-                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-red-600/30 text-red-400">
+                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-red-600/20 text-red-600 dark:text-red-400">
                           No
                         </span>
                       ) : (
-                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-gray-600/30 text-gray-400">
+                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-linen dark:bg-gray-600/30 text-muted dark:text-gray-400">
                           Sin confirmar
                         </span>
                       )}
@@ -795,7 +779,7 @@ export default function GuestManagement({
                         <button
                           onClick={() => toggleExpand(invitado.documentId)}
                           title="Acompañantes"
-                          className="p-2 text-amber-400 hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-2 text-amber-500 dark:text-amber-400 hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           {expandedId === invitado.documentId ? (
                             <ChevronUp className="w-4 h-4" />
@@ -814,21 +798,21 @@ export default function GuestManagement({
                             )
                           }
                           title="Enviar WhatsApp"
-                          className="p-2 text-green-400 hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-2 text-green-500 dark:text-green-400 hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           <MessageCircle className="w-4 h-4" />
                         </button>
 
                         <button
                           onClick={() => startEdit(invitado)}
-                          className="p-2 text-blue-400 hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-2 text-blue-500 dark:text-blue-400 hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
 
                         <button
                           onClick={() => deleteGuest(invitado.documentId)}
-                          className="p-2 text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-2 text-red-400 hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -840,30 +824,30 @@ export default function GuestManagement({
                   {expandedId === invitado.documentId && (
                     <tr
                       key={`${invitado.documentId}-acomp`}
-                      className="bg-gray-900/60"
+                      className="bg-cream/60 dark:bg-gray-900/60"
                     >
                       <td colSpan={6} className="px-4 sm:px-6 py-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-300 font-light">
+                            <span className="text-sm text-charcoal/75 dark:text-gray-300 font-light">
                               Detalles
                             </span>
                           </div>
-                          <div className="bg-gray-800 rounded-lg p-4 border border-gray-600 space-y-2">
+                          <div className="bg-linen dark:bg-gray-800 rounded-lg p-4 border border-blush-dark dark:border-gray-600 space-y-2">
                             {invitado.note ? (
-                              <p className="text-sm text-gray-400 italic">
+                              <p className="text-sm text-muted dark:text-gray-400 italic">
                                 Nota: {invitado.note}
                               </p>
                             ) : (
-                              <p className="text-sm text-gray-500 italic">
+                              <p className="text-sm text-muted/70 dark:text-gray-500 italic">
                                 Sin nota adicional
                               </p>
                             )}
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-300 font-light">
+                            <span className="text-sm text-charcoal/75 dark:text-gray-300 font-light">
                               Acompañantes{" "}
-                              <span className="text-gray-500">
+                              <span className="text-muted dark:text-gray-500">
                                 ({acompCount(invitado.documentId)} /{" "}
                                 {invitado.max_passes - 1} posibles)
                               </span>
@@ -884,14 +868,14 @@ export default function GuestManagement({
 
                           {/* FORMULARIO NUEVO ACOMPAÑANTE */}
                           {showAcompForm === invitado.documentId && (
-                            <div className="bg-gray-800 rounded-lg p-4 border border-gray-600 space-y-3">
-                              <p className="text-xs text-amber-400">
+                            <div className="bg-linen dark:bg-gray-800 rounded-lg p-4 border border-blush-dark dark:border-gray-600 space-y-3">
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
                                 Pases disponibles:{" "}
                                 {pasesDisponiblesParaAcomp(invitado)}
                               </p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <label className="text-xs text-gray-400 block mb-1">
+                                  <label className="text-xs text-muted dark:text-gray-400 block mb-1">
                                     Nombre *
                                   </label>
                                   <input
@@ -904,11 +888,11 @@ export default function GuestManagement({
                                       })
                                     }
                                     placeholder="Nombre completo"
-                                    className="w-full px-3 py-2 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-amber-500 focus:outline-none"
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-amber-500 focus:outline-none"
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-gray-400 block mb-1">
+                                  <label className="text-xs text-muted dark:text-gray-400 block mb-1">
                                     Teléfono
                                   </label>
                                   <input
@@ -921,7 +905,7 @@ export default function GuestManagement({
                                       })
                                     }
                                     placeholder="+52 123456789"
-                                    className="w-full px-3 py-2 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-amber-500 focus:outline-none"
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-amber-500 focus:outline-none"
                                   />
                                 </div>
                               </div>
@@ -936,7 +920,7 @@ export default function GuestManagement({
                                 </button>
                                 <button
                                   onClick={() => setShowAcompForm(null)}
-                                  className="flex items-center gap-1 px-4 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                                  className="flex items-center gap-1 px-4 py-1.5 text-xs bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors"
                                 >
                                   <X className="w-3 h-3" />
                                   Cancelar
@@ -947,10 +931,10 @@ export default function GuestManagement({
 
                           {/* LISTA ACOMPAÑANTES */}
                           {loadingAcomp === invitado.documentId ? (
-                            <p className="text-xs text-gray-500">Cargando...</p>
+                            <p className="text-xs text-muted/70 dark:text-gray-500">Cargando...</p>
                           ) : acompanantes[invitado.documentId]?.length ===
                             0 ? (
-                            <p className="text-xs text-gray-500 italic">
+                            <p className="text-xs text-muted/70 dark:text-gray-500 italic">
                               Sin acompañantes registrados
                             </p>
                           ) : (
@@ -958,10 +942,10 @@ export default function GuestManagement({
                               {acompanantes[invitado.documentId]?.map((a) => (
                                 <div key={a.documentId}>
                                   {editingAcompId === a.documentId ? (
-                                    <div className="bg-gray-800 rounded-lg p-3 border border-blue-600/50 space-y-2">
+                                    <div className="bg-linen dark:bg-gray-800 rounded-lg p-3 border border-blue-400/50 dark:border-blue-600/50 space-y-2">
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         <div>
-                                          <label className="text-xs text-gray-400 block mb-1">
+                                          <label className="text-xs text-muted dark:text-gray-400 block mb-1">
                                             Nombre *
                                           </label>
                                           <input
@@ -973,11 +957,11 @@ export default function GuestManagement({
                                                 full_name: e.target.value,
                                               })
                                             }
-                                            className="w-full px-3 py-1.5 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
                                           />
                                         </div>
                                         <div>
-                                          <label className="text-xs text-gray-400 block mb-1">
+                                          <label className="text-xs text-muted dark:text-gray-400 block mb-1">
                                             Teléfono
                                           </label>
                                           <input
@@ -990,7 +974,7 @@ export default function GuestManagement({
                                               })
                                             }
                                             placeholder="+52 123456789"
-                                            className="w-full px-3 py-1.5 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
                                           />
                                         </div>
                                       </div>
@@ -1010,7 +994,7 @@ export default function GuestManagement({
                                         </button>
                                         <button
                                           onClick={cancelEditAcomp}
-                                          className="flex items-center gap-1 px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                                          className="flex items-center gap-1 px-3 py-1 text-xs bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors"
                                         >
                                           <X className="w-3 h-3" />
                                           Cancelar
@@ -1018,13 +1002,13 @@ export default function GuestManagement({
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2">
+                                    <div className="flex items-center justify-between bg-linen/50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
                                       <div className="min-w-0">
-                                        <span className="text-sm text-white">
+                                        <span className="text-sm text-charcoal dark:text-white">
                                           {a.full_name}
                                         </span>
                                         {a.phone && (
-                                          <span className="ml-3 text-xs text-gray-500">
+                                          <span className="ml-3 text-xs text-muted/70 dark:text-gray-500">
                                             {a.phone}
                                           </span>
                                         )}
@@ -1040,14 +1024,14 @@ export default function GuestManagement({
                                             )
                                           }
                                           title="Enviar WhatsApp"
-                                          className="p-1 text-green-400 hover:bg-gray-700 rounded transition-colors"
+                                          className="p-1 text-green-500 dark:text-green-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
                                         >
                                           <MessageCircle className="w-3.5 h-3.5" />
                                         </button>
                                         <button
                                           onClick={() => startEditAcomp(a)}
                                           title="Editar acompañante"
-                                          className="p-1 text-blue-400 hover:bg-gray-700 rounded transition-colors"
+                                          className="p-1 text-blue-500 dark:text-blue-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
                                         >
                                           <Edit2 className="w-3.5 h-3.5" />
                                         </button>
@@ -1058,7 +1042,7 @@ export default function GuestManagement({
                                               invitado.documentId,
                                             )
                                           }
-                                          className="p-1 text-red-400 hover:bg-gray-700 rounded transition-colors"
+                                          className="p-1 text-red-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
                                         >
                                           <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -1079,7 +1063,7 @@ export default function GuestManagement({
           </table>
         </div>
         {invitadosFiltrados.length === 0 && (
-          <div className="py-8 text-center text-gray-500 text-sm">
+          <div className="py-8 text-center text-muted/70 dark:text-gray-500 text-sm">
             Sin resultados para "{search}"
           </div>
         )}
@@ -1088,13 +1072,13 @@ export default function GuestManagement({
       {/* MODAL VISTA PREVIA IMPORTACIÓN */}
       {importPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 shrink-0">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-blush-dark dark:border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-blush-dark dark:border-gray-700 shrink-0">
               <div>
-                <h3 className="text-lg text-white font-light">
+                <h3 className="text-lg text-charcoal dark:text-white font-light">
                   Vista previa de importación
                 </h3>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-muted dark:text-gray-400 mt-0.5">
                   {selectedGroups.size} de {importPreview.length} invitados
                   seleccionados
                 </p>
@@ -1108,7 +1092,7 @@ export default function GuestManagement({
                         : new Set(importPreview.map((_, i) => i)),
                     )
                   }
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
                 >
                   {selectedGroups.size === importPreview.length
                     ? "Deseleccionar todo"
@@ -1119,7 +1103,7 @@ export default function GuestManagement({
                     setImportPreview(null);
                     setSelectedGroups(new Set());
                   }}
-                  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  className="p-1.5 text-muted dark:text-gray-400 hover:text-charcoal dark:hover:text-white hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1140,8 +1124,8 @@ export default function GuestManagement({
                     }}
                     className={`rounded-xl border cursor-pointer transition-all duration-150 ${
                       checked
-                        ? "border-indigo-500/60 bg-indigo-950/40"
-                        : "border-gray-700 bg-gray-800/50 opacity-60"
+                        ? "border-indigo-400/60 dark:border-indigo-500/60 bg-indigo-50 dark:bg-indigo-950/40"
+                        : "border-blush-dark dark:border-gray-700 bg-linen/50 dark:bg-gray-800/50 opacity-60"
                     }`}
                   >
                     <div className="flex items-center gap-3 px-4 py-3">
@@ -1153,32 +1137,32 @@ export default function GuestManagement({
                         className="w-4 h-4 accent-indigo-500 shrink-0 cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate">
+                        <p className="text-charcoal dark:text-white font-medium truncate">
                           {grupo.nombre}
                         </p>
                         {grupo.phone && (
-                          <p className="text-xs text-gray-400">{grupo.phone}</p>
+                          <p className="text-xs text-muted dark:text-gray-400">{grupo.phone}</p>
                         )}
                       </div>
-                      <span className="text-xs text-indigo-400 shrink-0">
+                      <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0">
                         {1 + grupo.acomps.length}{" "}
                         {grupo.acomps.length === 0 ? "pase" : "pases"}
                       </span>
                     </div>
 
                     {grupo.acomps.length > 0 && (
-                      <div className="border-t border-gray-700/60 mx-4 mb-3 pt-2 space-y-1.5">
+                      <div className="border-t border-blush-dark/60 dark:border-gray-700/60 mx-4 mb-3 pt-2 space-y-1.5">
                         {grupo.acomps.map((a, ai) => (
                           <div
                             key={ai}
                             className="flex items-center gap-2 pl-7"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/60 shrink-0" />
-                            <p className="text-sm text-gray-300 truncate">
+                            <p className="text-sm text-charcoal/75 dark:text-gray-300 truncate">
                               {a.nombre}
                             </p>
                             {a.phone && (
-                              <p className="text-xs text-gray-500 ml-auto shrink-0">
+                              <p className="text-xs text-muted/70 dark:text-gray-500 ml-auto shrink-0">
                                 {a.phone}
                               </p>
                             )}
@@ -1191,7 +1175,7 @@ export default function GuestManagement({
               })}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 px-6 py-4 border-t border-gray-700 shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3 px-6 py-4 border-t border-blush-dark dark:border-gray-700 shrink-0">
               <button
                 onClick={confirmImport}
                 disabled={importing || selectedGroups.size === 0}
@@ -1208,7 +1192,7 @@ export default function GuestManagement({
                   setSelectedGroups(new Set());
                 }}
                 disabled={importing}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded-lg transition-colors font-light"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 disabled:opacity-50 text-charcoal dark:text-white rounded-lg transition-colors font-light"
               >
                 <X className="w-4 h-4" />
                 Cancelar

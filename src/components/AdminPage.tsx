@@ -8,17 +8,20 @@ import {
 } from "../lib/services";
 import { token } from "../lib/api";
 import type { Guest, Table, Companion, StrapiUser, Event, EventChecklistItem } from "../lib/types";
-import { Users, Table2, CheckCircle, XCircle, LogOut, ChevronDown, Calendar, ListChecks } from "lucide-react";
+import { Users, Table2, CheckCircle, XCircle, LogOut, ChevronDown, Calendar, ListChecks, Sun, Moon } from "lucide-react";
 import AdminStats from "./admin/AdminStats";
 import GuestManagement from "./admin/GuestManagement";
 import TableManagement from "./admin/TableManagement";
 import TodoManagement from "./admin/TodoManagement";
 
 const MAIN_EVENT_ID = import.meta.env.VITE_EVENT_ID as string | undefined;
+const STORAGE_KEY_EVENT = "wpmx_event";
+const STORAGE_KEY_THEME = "wpmx_theme";
 
 type TabType = "stats" | "guests" | "tables" | "todos";
 
 export default function AdminPage() {
+  const [isDark, setIsDark] = useState(() => localStorage.getItem(STORAGE_KEY_THEME) !== "light");
   const [activeTab, setActiveTab] = useState<TabType>("stats");
   const [invitados, setInvitados] = useState<Guest[]>([]);
   const [mesas, setMesas] = useState<Table[]>([]);
@@ -37,6 +40,12 @@ export default function AdminPage() {
   const [isManageable, setIsManageable] = useState<boolean | null>(null);
   const [isSelectingEvent, setIsSelectingEvent] = useState(false);
 
+  // Aplica el tema al elemento html y persiste
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+    localStorage.setItem(STORAGE_KEY_THEME, isDark ? "dark" : "light");
+  }, [isDark]);
+
   // Verifica is_manageable del evento principal y restaura sesión si hay token
   useEffect(() => {
     const manageableCheck = MAIN_EVENT_ID
@@ -52,7 +61,12 @@ export default function AdminPage() {
       if (manageable && events.length > 0) {
         setAllEvents(events);
         setIsLoggedIn(true);
-        if (events.length === 1) {
+        const savedId = localStorage.getItem(STORAGE_KEY_EVENT);
+        const saved = savedId ? events.find((e) => e.documentId === savedId) : null;
+        if (saved) {
+          setEvent(saved);
+          setEventDocumentId(saved.documentId);
+        } else if (events.length === 1) {
           setEvent(events[0]);
           setEventDocumentId(events[0].documentId);
         } else {
@@ -114,7 +128,12 @@ export default function AdminPage() {
       setIsLoggedIn(true);
       setUsername("");
       setPassword("");
-      if (events.length === 1) {
+      const savedId = localStorage.getItem(STORAGE_KEY_EVENT);
+      const saved = savedId ? events.find((e) => e.documentId === savedId) : null;
+      if (saved) {
+        setEvent(saved);
+        setEventDocumentId(saved.documentId);
+      } else if (events.length === 1) {
         setEvent(events[0]);
         setEventDocumentId(events[0].documentId);
       } else {
@@ -129,6 +148,7 @@ export default function AdminPage() {
   };
 
   const handleSelectEvent = (ev: Event) => {
+    localStorage.setItem(STORAGE_KEY_EVENT, ev.documentId);
     setEvent(ev);
     setEventDocumentId(ev.documentId);
     setInvitados([]);
@@ -141,6 +161,7 @@ export default function AdminPage() {
   const handleSwitchEvent = (docId: string) => {
     const ev = allEvents.find((e) => e.documentId === docId);
     if (!ev || ev.documentId === eventDocumentId) return;
+    localStorage.setItem(STORAGE_KEY_EVENT, ev.documentId);
     setEvent(ev);
     setEventDocumentId(ev.documentId);
     setInvitados([]);
@@ -151,6 +172,7 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     authService.logout();
+    localStorage.removeItem(STORAGE_KEY_EVENT);
     setIsLoggedIn(false);
     setUser(null);
     setEventDocumentId(null);
@@ -167,24 +189,34 @@ export default function AdminPage() {
     if (eventDocumentId) loadData();
   };
 
+  const ThemeToggle = () => (
+    <button
+      onClick={() => setIsDark((v) => !v)}
+      title={isDark ? "Modo claro" : "Modo oscuro"}
+      className="p-2 rounded-lg bg-linen dark:bg-gray-700 text-muted dark:text-gray-400 hover:bg-blush dark:hover:bg-gray-600 transition-colors"
+    >
+      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+    </button>
+  );
+
   // ── Pantallas de estado ────────────────────────────────────────────────────
 
   if (isCheckingSession || isManageable === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <div className="text-gray-400">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cream via-linen to-cream dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="text-muted dark:text-gray-400">Cargando...</div>
       </div>
     );
   }
 
   if (!isManageable) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cream via-linen to-cream dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="text-center">
-          <p className="text-gray-400 text-lg mb-4">Acceso no disponible</p>
+          <p className="text-muted dark:text-gray-400 text-lg mb-4">Acceso no disponible</p>
           <a
             href="/"
-            className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+            className="text-muted/70 dark:text-gray-500 hover:text-muted dark:hover:text-gray-300 text-sm transition-colors"
           >
             Volver al inicio
           </a>
@@ -195,15 +227,18 @@ export default function AdminPage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md border border-gray-700">
-          <h2 className="text-3xl font-serif text-white mb-8 text-center">
-            Panel Admin
-          </h2>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cream via-linen to-cream dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md border border-blush-dark dark:border-gray-700">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-serif text-charcoal dark:text-white">
+              Panel Admin
+            </h2>
+            <ThemeToggle />
+          </div>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Usuario
               </label>
               <input
@@ -212,12 +247,12 @@ export default function AdminPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin()}
                 placeholder="Ingresa tu usuario"
-                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-emerald-500 focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-emerald-500 focus:outline-none transition-colors placeholder-muted/50 dark:placeholder-gray-500"
               />
             </div>
 
             <div>
-              <label className="text-sm text-gray-400 block mb-2">
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                 Contraseña
               </label>
               <input
@@ -226,12 +261,12 @@ export default function AdminPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin()}
                 placeholder="Ingresa tu contraseña"
-                className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-emerald-500 focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-emerald-500 focus:outline-none transition-colors placeholder-muted/50 dark:placeholder-gray-500"
               />
             </div>
 
             {loginError && (
-              <div className="bg-red-600/20 border border-red-500 text-red-300 px-4 py-2 rounded-lg text-sm">
+              <div className="bg-red-600/20 border border-red-500 text-red-600 dark:text-red-300 px-4 py-2 rounded-lg text-sm">
                 {loginError}
               </div>
             )}
@@ -251,19 +286,22 @@ export default function AdminPage() {
 
   if (isSelectingEvent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cream via-linen to-cream dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
         <div className="w-full max-w-2xl">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl sm:text-3xl font-serif text-white">
+            <h2 className="text-2xl sm:text-3xl font-serif text-charcoal dark:text-white">
               Selecciona un evento
             </h2>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors text-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              Salir
-            </button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-muted dark:text-gray-300 rounded-lg transition-colors text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                Salir
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -271,13 +309,13 @@ export default function AdminPage() {
               <button
                 key={ev.documentId}
                 onClick={() => handleSelectEvent(ev)}
-                className="text-left bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-blue-500 rounded-xl p-6 transition-all duration-200 group"
+                className="text-left bg-white dark:bg-gray-800 hover:bg-linen dark:hover:bg-gray-700 border border-blush-dark dark:border-gray-700 hover:border-gold dark:hover:border-blue-500 rounded-xl p-6 transition-all duration-200 group"
               >
-                <h3 className="text-white text-lg font-light mb-2 group-hover:text-blue-300 transition-colors">
+                <h3 className="text-charcoal dark:text-white text-lg font-light mb-2 group-hover:text-gold dark:group-hover:text-blue-300 transition-colors">
                   {ev.name}
                 </h3>
                 {ev.event_date && (
-                  <p className="text-gray-400 text-sm flex items-center gap-2">
+                  <p className="text-muted dark:text-gray-400 text-sm flex items-center gap-2">
                     <Calendar className="w-4 h-4 flex-shrink-0" />
                     {new Date(ev.event_date).toLocaleDateString("es-ES", {
                       day: "numeric",
@@ -287,7 +325,7 @@ export default function AdminPage() {
                   </p>
                 )}
                 {ev.locations?.[0]?.name && (
-                  <p className="text-gray-500 text-sm mt-1">
+                  <p className="text-muted/70 dark:text-gray-500 text-sm mt-1">
                     {ev.locations[0].name}
                   </p>
                 )}
@@ -302,12 +340,12 @@ export default function AdminPage() {
   // ── Panel principal ────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-cream via-linen to-cream dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-12">
           <div>
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-serif text-white mb-1 sm:mb-2">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-serif text-charcoal dark:text-white mb-1 sm:mb-2">
               Panel de Administración
             </h1>
             {allEvents.length > 1 ? (
@@ -316,7 +354,7 @@ export default function AdminPage() {
                   <select
                     value={eventDocumentId ?? ""}
                     onChange={(e) => handleSwitchEvent(e.target.value)}
-                    className="appearance-none bg-gray-700 text-gray-200 text-sm sm:text-base pl-3 pr-8 py-1 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none cursor-pointer"
+                    className="appearance-none bg-linen dark:bg-gray-700 text-charcoal dark:text-gray-200 text-sm sm:text-base pl-3 pr-8 py-1 rounded-lg border border-blush-dark dark:border-gray-600 focus:border-gold dark:focus:border-blue-500 focus:outline-none cursor-pointer"
                   >
                     {allEvents.map((ev) => (
                       <option key={ev.documentId} value={ev.documentId}>
@@ -324,29 +362,32 @@ export default function AdminPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 w-4 h-4 text-muted dark:text-gray-400 pointer-events-none" />
                 </div>
                 {user && (
-                  <span className="text-gray-500 text-sm">· {user.email}</span>
+                  <span className="text-muted/70 dark:text-gray-500 text-sm">· {user.email}</span>
                 )}
               </div>
             ) : (
-              <p className="text-gray-400 text-sm sm:text-base">
+              <p className="text-muted dark:text-gray-400 text-sm sm:text-base">
                 {event?.name} - Gestión de Evento
                 {user && (
-                  <span className="ml-2 text-gray-500">· {user.email}</span>
+                  <span className="ml-2 text-muted/70 dark:text-gray-500">· {user.email}</span>
                 )}
               </p>
             )}
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full sm:w-auto"
-          >
-            <LogOut className="w-5 h-5" />
-            Cerrar Sesión
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors flex-1 sm:flex-none"
+            >
+              <LogOut className="w-5 h-5" />
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
 
         {/* STATS */}
@@ -412,7 +453,7 @@ export default function AdminPage() {
             className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-light transition-colors ${
               activeTab === "stats"
                 ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-linen dark:bg-gray-700 text-muted dark:text-gray-300 hover:bg-blush dark:hover:bg-gray-600"
             }`}
           >
             Estadísticas
@@ -423,7 +464,7 @@ export default function AdminPage() {
             className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-light transition-colors ${
               activeTab === "guests"
                 ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-linen dark:bg-gray-700 text-muted dark:text-gray-300 hover:bg-blush dark:hover:bg-gray-600"
             }`}
           >
             Invitados
@@ -434,7 +475,7 @@ export default function AdminPage() {
             className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-light transition-colors ${
               activeTab === "tables"
                 ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-linen dark:bg-gray-700 text-muted dark:text-gray-300 hover:bg-blush dark:hover:bg-gray-600"
             }`}
           >
             Mesas
@@ -445,14 +486,14 @@ export default function AdminPage() {
             className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-light transition-colors flex items-center justify-center gap-2 ${
               activeTab === "todos"
                 ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-linen dark:bg-gray-700 text-muted dark:text-gray-300 hover:bg-blush dark:hover:bg-gray-600"
             }`}
           >
             <ListChecks className="w-4 h-4" />
             Checklist
             {todos.length > 0 && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                activeTab === "todos" ? "bg-blue-500" : "bg-gray-600"
+                activeTab === "todos" ? "bg-blue-500" : "bg-blush-dark dark:bg-gray-600"
               }`}>
                 {todos.filter((t) => !t.checked).length}
               </span>

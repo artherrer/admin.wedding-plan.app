@@ -20,7 +20,8 @@ export default function TableManagement({
   onRefresh,
 }: TableManagementProps) {
   const [draggedGuest, setDraggedGuest] = useState<Guest | null>(null);
-  const [newTableNumber, setNewTableNumber] = useState("");
+  const [newTableName, setNewTableName] = useState("");
+  const [newTableCapacity, setNewTableCapacity] = useState(10);
   const [loading, setLoading] = useState(false);
 
   const confirmadosNoAsignados = invitados.filter(
@@ -111,15 +112,16 @@ export default function TableManagement({
   };
 
   const addTable = async () => {
-    if (!newTableNumber.trim()) return;
+    if (!newTableName.trim()) return;
 
     try {
       setLoading(true);
       await tableService.create(eventDocumentId, {
-        number: parseInt(newTableNumber),
+        name: newTableName.trim(),
+        capacity: newTableCapacity,
       });
       toast.success("Mesa agregada correctamente");
-      setNewTableNumber("");
+      setNewTableName("");
       onRefresh();
     } catch (err) {
       console.error("Error adding table:", err);
@@ -148,26 +150,26 @@ export default function TableManagement({
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* PANEL IZQUIERDO */}
-        <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700">
-          <h3 className="text-base sm:text-lg text-white font-light mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700">
+          <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
             Invitados Sin Asignar
           </h3>
 
           <div className="space-y-3 max-h-80 sm:max-h-96 overflow-y-auto">
             {confirmadosNoAsignados.length === 0 ? (
-              <p className="text-gray-400 text-sm">Todos asignados</p>
+              <p className="text-muted dark:text-gray-400 text-sm">Todos asignados</p>
             ) : (
               confirmadosNoAsignados.map((guest) => (
                 <div
                   key={guest.documentId}
                   draggable
                   onDragStart={(e) => handleDragStart(e, guest)}
-                  className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg cursor-move transition-colors"
+                  className="p-3 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 rounded-lg cursor-move transition-colors"
                 >
-                  <div className="text-white text-sm sm:text-base font-light">
+                  <div className="text-charcoal dark:text-white text-sm sm:text-base font-light">
                     {guest.full_name}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-muted dark:text-gray-400">
                     {guest.confirmed_passes} pases
                   </div>
                 </div>
@@ -175,21 +177,29 @@ export default function TableManagement({
             )}
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <h4 className="text-sm text-gray-400 mb-3">Agregar Mesa</h4>
+          <div className="mt-6 pt-6 border-t border-blush-dark dark:border-gray-700">
+            <h4 className="text-sm text-muted dark:text-gray-400 mb-3">Agregar Mesa</h4>
 
-            <div className="flex gap-2">
+            <div className="flex-1 gap-2">
+              <input
+                type="text"
+                value={newTableName}
+                onChange={(e) => setNewTableName(e.target.value)}
+                placeholder="Nombre o número de mesa"
+                className="px-3 py-2 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
+              />
               <input
                 type="number"
-                value={newTableNumber}
-                onChange={(e) => setNewTableNumber(e.target.value)}
-                placeholder="Nro."
-                className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                value={newTableCapacity}
+                onChange={(e) => setNewTableCapacity(parseInt(e.target.value) || 10)}
+                placeholder="10"
+                min={1}
+                className="px-3 py-2 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
               />
 
               <button
                 onClick={addTable}
-                disabled={loading || !newTableNumber}
+                disabled={loading || !newTableName || newTableCapacity < 1}
                 className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
               >
                 <Plus className="w-5 h-5" />
@@ -200,7 +210,7 @@ export default function TableManagement({
 
         {/* PANEL MESAS */}
         <div className="lg:col-span-2">
-          <h3 className="text-base sm:text-lg text-white font-light mb-4">
+          <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
             Mesas
           </h3>
 
@@ -231,36 +241,36 @@ export default function TableManagement({
                       ? (e) => handleDropOnTable(e, mesa.documentId)
                       : undefined
                   }
-                  className={`bg-gray-800 rounded-lg border-2 border-dashed p-4 transition-colors ${
+                  className={`bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed p-4 transition-colors ${
                     isFull
-                      ? "border-red-600 hover:border-red-500"
-                      : "border-gray-600 hover:border-blue-500"
+                      ? "border-red-400 dark:border-red-600 hover:border-red-500"
+                      : "border-blush-dark dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500"
                   }`}
                 >
                   {/* Header de mesa */}
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <div className="text-white font-light text-base sm:text-lg">
-                        Mesa {mesa.number}
+                      <div className="text-charcoal dark:text-white font-light text-base sm:text-lg">
+                        Mesa {mesa.name}
                       </div>
                       <div
-                        className={`text-xs ${isFull ? "text-red-400" : "text-gray-400"}`}
+                        className={`text-xs ${isFull ? "text-red-500 dark:text-red-400" : "text-muted dark:text-gray-400"}`}
                       >
                         {passesUsed}/{mesa.capacity} pases
                         {!isFull && (
-                          <span className="ml-2 text-yellow-400">
+                          <span className="ml-2 text-yellow-600 dark:text-yellow-400">
                             (+{availablePasses})
                           </span>
                         )}
                         {isFull && (
-                          <span className="ml-2 text-red-400">(Llena)</span>
+                          <span className="ml-2 text-red-500 dark:text-red-400">(Llena)</span>
                         )}
                       </div>
                     </div>
 
                     <button
                       onClick={() => deleteTable(mesa.documentId)}
-                      className="p-2 text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
+                      className="p-2 text-red-400 hover:bg-blush dark:hover:bg-gray-700 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -269,8 +279,8 @@ export default function TableManagement({
                   {/* Capitán actual */}
                   {capitanNombre && (
                     <div className="flex items-center gap-1 mb-3 px-2 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
-                      <Crown className="w-3 h-3 text-yellow-400 flex-shrink-0" />
-                      <span className="text-yellow-300 text-xs truncate">
+                      <Crown className="w-3 h-3 text-yellow-500 dark:text-yellow-400 flex-shrink-0" />
+                      <span className="text-yellow-700 dark:text-yellow-300 text-xs truncate">
                         {capitanNombre}
                       </span>
                     </div>
@@ -279,7 +289,7 @@ export default function TableManagement({
                   {/* Lista de invitados y acompañantes */}
                   <div className="space-y-2">
                     {mesaGuests.length === 0 ? (
-                      <div className="text-gray-500 text-sm italic text-center py-6">
+                      <div className="text-muted/70 dark:text-gray-500 text-sm italic text-center py-6">
                         Arrastra invitados aquí
                       </div>
                     ) : (
@@ -297,7 +307,7 @@ export default function TableManagement({
                               className={`p-2 rounded border flex items-center justify-between ${
                                 isCapitanInvitado
                                   ? "bg-yellow-500/15 border-yellow-500/40"
-                                  : "bg-green-600/20 border-green-600/30"
+                                  : "bg-green-600/10 dark:bg-green-600/20 border-green-500/30 dark:border-green-600/30"
                               }`}
                             >
                               <div className="flex items-center gap-1.5 min-w-0">
@@ -316,21 +326,21 @@ export default function TableManagement({
                                       ? "Quitar capitán"
                                       : "Hacer capitán de mesa"
                                   }
-                                  className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-white/10 disabled:opacity-40"
+                                  className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-black/10 disabled:opacity-40"
                                 >
                                   <Crown
                                     className={`w-3.5 h-3.5 ${
                                       isCapitanInvitado
-                                        ? "text-yellow-400 fill-yellow-400"
-                                        : "text-gray-500 hover:text-yellow-400"
+                                        ? "text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400"
+                                        : "text-muted dark:text-gray-500 hover:text-yellow-500 dark:hover:text-yellow-400"
                                     }`}
                                   />
                                 </button>
                                 <div className="min-w-0">
-                                  <div className="text-white text-sm truncate">
+                                  <div className="text-charcoal dark:text-white text-sm truncate">
                                     {guest.full_name}
                                   </div>
-                                  <div className="text-xs text-gray-400">
+                                  <div className="text-xs text-muted dark:text-gray-400">
                                     {guest.confirmed_passes} pases
                                   </div>
                                 </div>
@@ -357,7 +367,7 @@ export default function TableManagement({
                                   className={`ml-4 mt-1 p-1.5 rounded border flex items-center justify-between ${
                                     isCapitanAcomp
                                       ? "bg-yellow-500/10 border-yellow-500/30"
-                                      : "bg-green-600/10 border-green-600/20"
+                                      : "bg-green-600/5 dark:bg-green-600/10 border-green-500/20 dark:border-green-600/20"
                                   }`}
                                 >
                                   <div className="flex items-center gap-1.5 min-w-0">
@@ -376,17 +386,17 @@ export default function TableManagement({
                                           ? "Quitar capitán"
                                           : "Hacer capitán de mesa"
                                       }
-                                      className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-white/10 disabled:opacity-40"
+                                      className="flex-shrink-0 p-0.5 rounded transition-colors hover:bg-black/10 disabled:opacity-40"
                                     >
                                       <Crown
                                         className={`w-3 h-3 ${
                                           isCapitanAcomp
-                                            ? "text-yellow-400 fill-yellow-400"
-                                            : "text-gray-600 hover:text-yellow-400"
+                                            ? "text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400"
+                                            : "text-muted/50 dark:text-gray-600 hover:text-yellow-500 dark:hover:text-yellow-400"
                                         }`}
                                       />
                                     </button>
-                                    <span className="text-gray-300 text-xs truncate">
+                                    <span className="text-charcoal/75 dark:text-gray-300 text-xs truncate">
                                       {acomp.full_name}
                                     </span>
                                   </div>

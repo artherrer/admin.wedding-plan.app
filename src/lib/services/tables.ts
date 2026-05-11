@@ -11,7 +11,7 @@ export async function getAll(eventDocumentId?: string): Promise<Table[]> {
     params: {
       ...ALL,
       ...POPULATE,
-      'sort': 'number:asc',
+      'sort': 'name:asc',
       ...(eventDocumentId && { 'filters[event][documentId][$eq]': eventDocumentId }),
     },
   });

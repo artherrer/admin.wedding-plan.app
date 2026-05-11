@@ -18,9 +18,9 @@ const PRIORITY_CONFIG: Record<
   Priority,
   { label: string; color: string; bg: string; ring: string; icon: React.ReactNode }
 > = {
-  high:   { label: "Alta",  color: "text-red-400",   bg: "bg-red-500/10 border-red-500/30",    ring: "ring-red-500",   icon: <ArrowUp className="w-3 h-3" /> },
-  medium: { label: "Media", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/30", ring: "ring-amber-500", icon: <Minus className="w-3 h-3" /> },
-  low:    { label: "Baja",  color: "text-blue-400",  bg: "bg-blue-500/10 border-blue-500/30",   ring: "ring-blue-500",  icon: <AlertCircle className="w-3 h-3" /> },
+  high:   { label: "Alta",  color: "text-red-500 dark:text-red-400",   bg: "bg-red-500/10 border-red-500/30",    ring: "ring-red-500",   icon: <ArrowUp className="w-3 h-3" /> },
+  medium: { label: "Media", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10 border-amber-500/30", ring: "ring-amber-500", icon: <Minus className="w-3 h-3" /> },
+  low:    { label: "Baja",  color: "text-blue-500 dark:text-blue-400",  bg: "bg-blue-500/10 border-blue-500/30",   ring: "ring-blue-500",  icon: <AlertCircle className="w-3 h-3" /> },
 };
 
 function priorityOf(item: EventChecklistItem): Priority {
@@ -73,36 +73,36 @@ function EditPanel({ item, onSave, onDelete, onClose }: EditPanelProps) {
   };
 
   return (
-    <div className="mt-2 p-3 sm:p-4 bg-gray-900 rounded-xl border border-gray-600 space-y-3">
+    <div className="mt-2 p-3 sm:p-4 bg-linen dark:bg-gray-900 rounded-xl border border-blush-dark dark:border-gray-600 space-y-3">
       {/* Título */}
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">Título</label>
+        <label className="text-xs text-muted dark:text-gray-500 mb-1 block">Título</label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSave()}
-          className="w-full bg-gray-800 text-gray-100 text-sm rounded-lg px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+          className="w-full bg-white dark:bg-gray-800 text-charcoal dark:text-gray-100 text-sm rounded-lg px-3 py-2 border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
         />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Fecha límite */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+          <label className="text-xs text-muted dark:text-gray-500 mb-1 flex items-center gap-1">
             <Calendar className="w-3 h-3" /> Fecha límite
           </label>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full bg-gray-800 text-gray-200 text-sm rounded-lg px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none [color-scheme:dark]"
+            className="w-full bg-white dark:bg-gray-800 text-charcoal dark:text-gray-200 text-sm rounded-lg px-3 py-2 border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none [color-scheme:light] dark:[color-scheme:dark]"
           />
         </div>
 
         {/* Prioridad */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">Prioridad</label>
+          <label className="text-xs text-muted dark:text-gray-500 mb-1 block">Prioridad</label>
           <div className="flex gap-1.5">
             {(["high", "medium", "low"] as Priority[]).map((p) => {
               const cfg = PRIORITY_CONFIG[p];
@@ -113,7 +113,7 @@ function EditPanel({ item, onSave, onDelete, onClose }: EditPanelProps) {
                   className={`flex-1 flex items-center justify-center gap-1 text-xs px-2 py-1.5 rounded-lg border transition-all ${
                     priority === p
                       ? `${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}`
-                      : "bg-gray-800 text-gray-500 border-gray-600 hover:border-gray-400"
+                      : "bg-white dark:bg-gray-800 text-muted dark:text-gray-500 border-blush-dark dark:border-gray-600 hover:border-muted dark:hover:border-gray-400"
                   }`}
                 >
                   {cfg.icon} {cfg.label}
@@ -126,22 +126,21 @@ function EditPanel({ item, onSave, onDelete, onClose }: EditPanelProps) {
 
       {/* Notas */}
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+        <label className="text-xs text-muted dark:text-gray-500 mb-1 block">Notas</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Añade una nota..."
           rows={2}
-          className="w-full bg-gray-800 text-gray-200 text-sm rounded-lg px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none resize-none placeholder-gray-600"
+          className="w-full bg-white dark:bg-gray-800 text-charcoal dark:text-gray-200 text-sm rounded-lg px-3 py-2 border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none resize-none placeholder-muted/50 dark:placeholder-gray-600"
         />
       </div>
 
       {/* Acciones */}
       <div className="flex items-center justify-between pt-1">
-        {/* Delete */}
         {confirmDelete ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-red-400">¿Eliminar?</span>
+            <span className="text-xs text-red-500 dark:text-red-400">¿Eliminar?</span>
             <button
               onClick={handleDelete}
               disabled={deleting}
@@ -151,7 +150,7 @@ function EditPanel({ item, onSave, onDelete, onClose }: EditPanelProps) {
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
-              className="text-xs text-gray-500 hover:text-gray-300"
+              className="text-xs text-muted dark:text-gray-500 hover:text-charcoal dark:hover:text-gray-300"
             >
               Cancelar
             </button>
@@ -159,7 +158,7 @@ function EditPanel({ item, onSave, onDelete, onClose }: EditPanelProps) {
         ) : (
           <button
             onClick={() => setConfirmDelete(true)}
-            className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-400 transition-colors"
+            className="flex items-center gap-1 text-xs text-muted/70 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" /> Eliminar
           </button>
@@ -168,7 +167,7 @@ function EditPanel({ item, onSave, onDelete, onClose }: EditPanelProps) {
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted dark:text-gray-400 hover:text-charcoal dark:hover:text-gray-200 transition-colors"
           >
             <X className="w-3 h-3" /> Cancelar
           </button>
@@ -236,16 +235,16 @@ function TodoItemRow({
         onDragStart={(e) => onDragStart(e, item.documentId)}
         onDragEnd={onDragEnd}
         className={`rounded-xl border p-3 sm:p-4 transition-all duration-200 ${
-          isDragOver ? "border-blue-500/60 bg-blue-500/5" :
+          isDragOver ? "border-blue-400/60 dark:border-blue-500/60 bg-blue-50 dark:bg-blue-500/5" :
           item.checked
-            ? "bg-gray-800/40 border-gray-700/50 opacity-60"
+            ? "bg-linen/40 dark:bg-gray-800/40 border-blush-dark/50 dark:border-gray-700/50 opacity-60"
             : `${cfg.bg} border`
         } ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
       >
         <div className="flex items-start gap-2 sm:gap-3">
           {/* Drag handle */}
           {draggable && (
-            <span className="flex-shrink-0 mt-1 text-gray-600 hover:text-gray-400 cursor-grab touch-none">
+            <span className="flex-shrink-0 mt-1 text-muted/50 dark:text-gray-600 hover:text-muted dark:hover:text-gray-400 cursor-grab touch-none">
               <GripVertical className="w-4 h-4" />
             </span>
           )}
@@ -254,17 +253,17 @@ function TodoItemRow({
           <button
             onClick={handleToggle}
             disabled={toggling}
-            className="flex-shrink-0 mt-0.5 text-gray-400 hover:text-white transition-colors disabled:opacity-40"
+            className="flex-shrink-0 mt-0.5 text-muted dark:text-gray-400 hover:text-charcoal dark:hover:text-white transition-colors disabled:opacity-40"
           >
             {item.checked
-              ? <CheckSquare className="w-5 h-5 text-green-400" />
+              ? <CheckSquare className="w-5 h-5 text-green-500 dark:text-green-400" />
               : <Square className="w-5 h-5" />}
           </button>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-sm font-medium ${item.checked ? "line-through text-gray-500" : "text-gray-100"}`}>
+              <span className={`text-sm font-medium ${item.checked ? "line-through text-muted dark:text-gray-500" : "text-charcoal dark:text-gray-100"}`}>
                 {item.title}
               </span>
               <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${cfg.color} ${cfg.bg}`}>
@@ -273,8 +272,8 @@ function TodoItemRow({
               {formattedDate && (
                 <span className={`inline-flex items-center gap-1 text-xs ${
                   !item.checked && item.dueDate && new Date(item.dueDate) < new Date()
-                    ? "text-red-400"
-                    : "text-gray-500"
+                    ? "text-red-500 dark:text-red-400"
+                    : "text-muted dark:text-gray-500"
                 }`}>
                   <Calendar className="w-3 h-3" /> {formattedDate}
                 </span>
@@ -282,7 +281,7 @@ function TodoItemRow({
             </div>
 
             {item.notes && !showEdit && (
-              <p className="text-xs text-gray-500 mt-1 italic line-clamp-2">"{item.notes}"</p>
+              <p className="text-xs text-muted/70 dark:text-gray-500 mt-1 italic line-clamp-2">"{item.notes}"</p>
             )}
           </div>
 
@@ -292,7 +291,7 @@ function TodoItemRow({
               onClick={() => setShowEdit((v) => !v)}
               title="Editar"
               className={`p-1 rounded transition-colors ${
-                showEdit ? "text-blue-400 bg-blue-500/10" : "text-gray-600 hover:text-gray-300"
+                showEdit ? "text-blue-500 dark:text-blue-400 bg-blue-500/10" : "text-muted/70 dark:text-gray-600 hover:text-muted dark:hover:text-gray-300"
               }`}
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -332,7 +331,6 @@ function SectionGroup({ title, items, canDrag, onToggle, onEdit, onDelete, onReo
   const done = items.filter((i) => i.checked).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
 
-  // Sorted by order field
   const sorted = useMemo(
     () => [...items].sort((a, b) => a.order - b.order),
     [items],
@@ -381,15 +379,15 @@ function SectionGroup({ title, items, canDrag, onToggle, onEdit, onDelete, onReo
         onClick={() => setCollapsed((v) => !v)}
         className="w-full flex items-center gap-3 mb-3 group"
       >
-        <span className="text-gray-400 group-hover:text-gray-200 transition-colors">
+        <span className="text-muted dark:text-gray-400 group-hover:text-charcoal dark:group-hover:text-gray-200 transition-colors">
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </span>
-        <h3 className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors uppercase tracking-wider">
+        <h3 className="text-sm font-semibold text-muted dark:text-gray-300 group-hover:text-charcoal dark:group-hover:text-white transition-colors uppercase tracking-wider">
           {title}
         </h3>
         <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs text-gray-500">{done}/{items.length}</span>
-          <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+          <span className="text-xs text-muted/70 dark:text-gray-500">{done}/{items.length}</span>
+          <div className="w-20 h-1.5 bg-blush-dark dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500 rounded-full transition-all duration-500"
               style={{ width: `${pct}%` }}
@@ -428,7 +426,6 @@ export default function TodoManagement({ todos }: Props) {
   const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
   const prevTodosRef = useRef(todos);
 
-  // Sync from parent when reference changes (after full refresh)
   if (todos !== prevTodosRef.current) {
     prevTodosRef.current = todos;
     setLocalTodos(todos);
@@ -507,10 +504,7 @@ export default function TodoManagement({ todos }: Props) {
   };
 
   const handleReorder = async (sectionTitle: string, newDocumentIdOrder: string[]) => {
-    // Build order map: documentId → new order index
     const orderMap = new Map(newDocumentIdOrder.map((id, idx) => [id, idx]));
-
-    // Optimistic update
     setLocalTodos((prev) =>
       prev.map((t) => {
         if (sectionKey(t) !== sectionTitle) return t;
@@ -518,8 +512,6 @@ export default function TodoManagement({ todos }: Props) {
         return newOrder !== undefined ? { ...t, order: newOrder } : t;
       }),
     );
-
-    // Batch save — fire in parallel
     const updates = newDocumentIdOrder.map((documentId, idx) =>
       eventService.updateTodo(documentId, { order: idx }).catch(() => null),
     );
@@ -528,7 +520,7 @@ export default function TodoManagement({ todos }: Props) {
 
   if (localTodos.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500">
+      <div className="text-center py-16 text-muted dark:text-gray-500">
         <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
         <p>No hay tareas para este evento.</p>
       </div>
@@ -538,20 +530,20 @@ export default function TodoManagement({ todos }: Props) {
   return (
     <div>
       {/* Progreso general */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 border border-blush-dark dark:border-gray-700 rounded-xl p-4 sm:p-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">Progreso general</span>
-              <span className="text-lg font-bold text-white">{totalPct}%</span>
+              <span className="text-sm text-muted dark:text-gray-400">Progreso general</span>
+              <span className="text-lg font-bold text-charcoal dark:text-white">{totalPct}%</span>
             </div>
-            <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-blush-dark dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-700"
                 style={{ width: `${totalPct}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted/70 dark:text-gray-500 mt-1">
               {totalDone} de {localTodos.length} completadas
             </p>
           </div>
@@ -564,7 +556,7 @@ export default function TodoManagement({ todos }: Props) {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   filter === f
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200"
+                    : "bg-linen dark:bg-gray-700 text-muted dark:text-gray-400 hover:bg-blush dark:hover:bg-gray-600 hover:text-charcoal dark:hover:text-gray-200"
                 }`}
               >
                 {f === "all" ? "Todas" : f === "pending" ? "Pendientes" : "Completadas"}
@@ -585,7 +577,7 @@ export default function TodoManagement({ todos }: Props) {
           </span>
         ))}
         {filter === "all" && (
-          <span className="inline-flex items-center gap-1 text-xs text-gray-600 ml-auto">
+          <span className="inline-flex items-center gap-1 text-xs text-muted/50 dark:text-gray-600 ml-auto">
             <GripVertical className="w-3 h-3" /> Arrastra para reordenar
           </span>
         )}
@@ -593,7 +585,7 @@ export default function TodoManagement({ todos }: Props) {
 
       {/* Secciones */}
       {sections.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-8">No hay tareas con este filtro.</p>
+        <p className="text-muted dark:text-gray-500 text-sm text-center py-8">No hay tareas con este filtro.</p>
       ) : (
         sections.map(({ title, items }) => (
           <SectionGroup

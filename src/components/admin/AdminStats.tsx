@@ -56,40 +56,43 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
       : 0;
 
   const ocupacionPorMesa = mesas.map((mesa) => ({
-    mesa: mesa.number,
+    mesa: mesa.name,
     mesaDocId: mesa.documentId,
     ocupacion: personasPorMesa(mesa.documentId),
     capacidad: mesa.capacity,
   }));
 
+  const card = "bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700";
+  const cardTitle = "text-base sm:text-lg text-charcoal dark:text-white font-light";
+  const rowLabel = "text-muted dark:text-gray-400 text-sm sm:text-base";
+  const divider = "pb-3 border-b border-blush-dark dark:border-gray-700";
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* CARD 1: Ocupación de Mesas */}
-        <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700">
+        <div className={card}>
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <BarChart className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400" />
-            <h3 className="text-base sm:text-lg text-white font-light">
-              Ocupación de Mesas
-            </h3>
+            <h3 className={cardTitle}>Ocupación de Mesas</h3>
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Mesas Ocupadas</span>
-              <span className="text-xl sm:text-2xl text-green-400 font-bold">
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Mesas Ocupadas</span>
+              <span className="text-xl sm:text-2xl text-green-500 dark:text-green-400 font-bold">
                 {mesasOcupadas.length}
               </span>
             </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Mesas Libres</span>
-              <span className="text-xl sm:text-2xl text-gray-400 font-bold">
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Mesas Libres</span>
+              <span className="text-xl sm:text-2xl text-muted dark:text-gray-400 font-bold">
                 {mesasLibres}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-sm sm:text-base">Porcentaje</span>
-              <span className="text-xl sm:text-2xl text-yellow-400 font-bold">
+              <span className={rowLabel}>Porcentaje</span>
+              <span className="text-xl sm:text-2xl text-yellow-600 dark:text-yellow-400 font-bold">
                 {mesas.length > 0
                   ? ((mesasOcupadas.length / mesas.length) * 100).toFixed(0)
                   : 0}%
@@ -99,32 +102,28 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
         </div>
 
         {/* CARD 2: Asignación */}
-        <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700">
+        <div className={card}>
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <Users className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
-            <h3 className="text-base sm:text-lg text-white font-light">
-              Asignación de Mesas
-            </h3>
+            <h3 className={cardTitle}>Asignación de Mesas</h3>
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Con Mesa</span>
-              <span className="text-xl sm:text-2xl text-green-400 font-bold">
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Con Mesa</span>
+              <span className="text-xl sm:text-2xl text-green-500 dark:text-green-400 font-bold">
                 {personasConMesa}
               </span>
             </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">
-                Sin Mesa (confirmados)
-              </span>
-              <span className="text-xl sm:text-2xl text-orange-400 font-bold">
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Sin Mesa (confirmados)</span>
+              <span className="text-xl sm:text-2xl text-orange-500 dark:text-orange-400 font-bold">
                 {personasSinMesa}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-sm sm:text-base">% Con Mesa</span>
-              <span className="text-xl sm:text-2xl text-blue-400 font-bold">
+              <span className={rowLabel}>% Con Mesa</span>
+              <span className="text-xl sm:text-2xl text-blue-500 dark:text-blue-400 font-bold">
                 {totalConfirmadosPersonas > 0
                   ? ((personasConMesa / totalConfirmadosPersonas) * 100).toFixed(0)
                   : 0}%
@@ -134,70 +133,36 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
         </div>
 
         {/* CARD 3: Info General */}
-        <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700">
-          <h3 className="text-base sm:text-lg text-white font-light mb-4 sm:mb-6">
-            Información General
-          </h3>
+        <div className={card}>
+          <h3 className={`${cardTitle} mb-4 sm:mb-6`}>Información General</h3>
 
           <div className="space-y-3">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Total Personas</span>
-              <span className="text-xl sm:text-2xl text-blue-400 font-bold">
-                {totalPersonas}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Confirmados</span>
-              <span className="text-xl sm:text-2xl text-green-400 font-bold">
-                {totalConfirmados}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Sin Confirmar</span>
-              <span className="text-xl sm:text-2xl text-orange-400 font-bold">
-                {totalPendientes}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Rechazadas</span>
-              <span className="text-xl sm:text-2xl text-red-400 font-bold">
-                {totalRechazados}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Acompañantes</span>
-              <span className="text-xl sm:text-2xl text-amber-400 font-bold">
-                {acompanantes.length}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Capacidad Total</span>
-              <span className="text-xl sm:text-2xl text-cyan-400 font-bold">
-                {mesas.reduce((sum, m) => sum + m.capacity, 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-              <span className="text-gray-400 text-sm sm:text-base">Pases Promedio</span>
-              <span className="text-xl sm:text-2xl text-indigo-400 font-bold">
-                {pasesPromedio}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-sm sm:text-base">Mesas</span>
-              <span className="text-xl sm:text-2xl text-pink-400 font-bold">
-                {mesas.length}
-              </span>
-            </div>
+            {[
+              { label: "Total Personas", val: totalPersonas, color: "text-blue-500 dark:text-blue-400" },
+              { label: "Confirmados", val: totalConfirmados, color: "text-green-500 dark:text-green-400" },
+              { label: "Sin Confirmar", val: totalPendientes, color: "text-orange-500 dark:text-orange-400" },
+              { label: "Rechazadas", val: totalRechazados, color: "text-red-500 dark:text-red-400" },
+              { label: "Acompañantes", val: acompanantes.length, color: "text-amber-600 dark:text-amber-400" },
+              { label: "Capacidad Total", val: mesas.reduce((sum, m) => sum + m.capacity, 0), color: "text-cyan-600 dark:text-cyan-400" },
+              { label: "Pases Promedio", val: pasesPromedio, color: "text-indigo-500 dark:text-indigo-400" },
+              { label: "Mesas", val: mesas.length, color: "text-pink-500 dark:text-pink-400" },
+            ].map(({ label, val, color }, i, arr) => (
+              <div
+                key={label}
+                className={`flex justify-between items-center ${i < arr.length - 1 ? divider : ""}`}
+              >
+                <span className={rowLabel}>{label}</span>
+                <span className={`text-xl sm:text-2xl font-bold ${color}`}>{val}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* OCUPACIÓN POR MESA */}
-      <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700">
-        <h3 className="text-base sm:text-lg text-white font-light mb-1 sm:mb-2">
-          Ocupación por Mesa
-        </h3>
-        <p className="text-xs text-gray-500 mb-4 sm:mb-6">
+      <div className={card}>
+        <h3 className={`${cardTitle} mb-1 sm:mb-2`}>Ocupación por Mesa</h3>
+        <p className="text-xs text-muted/70 dark:text-gray-500 mb-4 sm:mb-6">
           Personas = pases confirmados de invitados asignados
         </p>
 
@@ -206,24 +171,24 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
             const porcentaje = capacidad > 0 ? (ocupacion / capacidad) * 100 : 0;
             const color =
               porcentaje === 0
-                ? "bg-gray-700"
+                ? "bg-blush dark:bg-gray-700"
                 : porcentaje > 100
                   ? "bg-red-600"
                   : porcentaje < 50
-                    ? "bg-yellow-600"
-                    : "bg-green-600";
+                    ? "bg-yellow-500"
+                    : "bg-green-500";
 
             return (
               <div key={mesaDocId} className="text-center">
-                <div className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">
+                <div className="text-xs sm:text-sm text-muted dark:text-gray-400 mb-1 sm:mb-2">
                   Mesa {mesa}
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-lg bg-gray-700 flex items-center justify-center mb-1 sm:mb-2">
-                  <span className="text-white text-xs sm:text-sm font-bold">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-lg bg-linen dark:bg-gray-700 flex items-center justify-center mb-1 sm:mb-2">
+                  <span className="text-charcoal dark:text-white text-xs sm:text-sm font-bold">
                     {ocupacion}/{capacidad}
                   </span>
                 </div>
-                <div className="w-10 sm:w-12 h-2 bg-gray-600 rounded-full mx-auto overflow-hidden">
+                <div className="w-10 sm:w-12 h-2 bg-blush-dark dark:bg-gray-600 rounded-full mx-auto overflow-hidden">
                   <div
                     className={`h-full ${color}`}
                     style={{ width: `${Math.min(porcentaje, 100)}%` }}
