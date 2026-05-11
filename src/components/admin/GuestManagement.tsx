@@ -734,13 +734,13 @@ export default function GuestManagement({
                     key={invitado.documentId}
                     className="border-b border-blush-dark/50 dark:border-gray-700 hover:bg-linen/50 dark:hover:bg-gray-700/50"
                   >
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal dark:text-white">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal dark:text-white whitespace-nowrap">
                       {invitado.full_name}
                     </td>
 
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       {invitado.phone ? (
-                        <span className="text-blue-500 dark:text-blue-400 break-all">
+                        <span className="text-blue-500 dark:text-blue-400">
                           {invitado.phone}
                         </span>
                       ) : (
@@ -758,7 +758,7 @@ export default function GuestManagement({
                       {invitado.confirmed_passes}/{invitado.max_passes}
                     </td>
 
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       {invitado.status === "yes" ? (
                         <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-green-600/20 text-green-700 dark:text-green-300">
                           Sí
@@ -775,7 +775,7 @@ export default function GuestManagement({
                     </td>
 
                     <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2">
                         <button
                           onClick={() => toggleExpand(invitado.documentId)}
                           title="Acompañantes"
@@ -844,6 +844,7 @@ export default function GuestManagement({
                               </p>
                             )}
                           </div>
+
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-charcoal/75 dark:text-gray-300 font-light">
                               Acompañantes{" "}
