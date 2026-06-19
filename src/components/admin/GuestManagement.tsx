@@ -173,6 +173,8 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
+type SortCol = "full_name" | "phone" | "unique_code" | "pases" | "status" | "self_payed" | "invited_by";
+
 const inputCls = "w-full px-4 py-2 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none";
 
 export default function GuestManagement({
@@ -203,30 +205,64 @@ export default function GuestManagement({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loadingAcomp, setLoadingAcomp] = useState<string | null>(null);
   const [showAcompForm, setShowAcompForm] = useState<string | null>(null);
-  const [acompForm, setAcompForm] = useState({ full_name: "", phone: "" });
+  const [acompForm, setAcompForm] = useState<{
+    full_name: string;
+    phone: string;
+    self_payed: boolean;
+    invited_by: "novio" | "novia" | "";
+  }>({ full_name: "", phone: "", self_payed: false, invited_by: "" });
   const [savingAcomp, setSavingAcomp] = useState(false);
 
   const [editingAcompId, setEditingAcompId] = useState<string | null>(null);
-  const [acompEditForm, setAcompEditForm] = useState({
-    full_name: "",
-    phone: "",
-  });
+  const [acompEditForm, setAcompEditForm] = useState<{
+    full_name: string;
+    phone: string;
+    self_payed: boolean;
+    invited_by: "novio" | "novia" | "";
+  }>({ full_name: "", phone: "", self_payed: false, invited_by: "" });
   const [savingAcompEdit, setSavingAcompEdit] = useState(false);
 
+  const [sortCol, setSortCol] = useState<SortCol>("full_name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+  };
+
+  const STATUS_ORDER = { yes: 0, pending: 1, no: 2 };
+
   const q = search.trim().toLowerCase();
-  const invitadosFiltrados = q
-    ? invitados.filter((inv) => {
-        const matchInvitado = inv.full_name.toLowerCase().includes(q);
-        const matchAcomp = (acompanantes[inv.documentId] ?? []).some((a) =>
-          a.full_name.toLowerCase().includes(q),
-        );
-        return matchInvitado || matchAcomp;
-      })
-    : invitados
-        .slice()
-        .sort((a, b) =>
-          a.full_name.toLowerCase().localeCompare(b.full_name.toLowerCase()),
-        );
+  const invitadosFiltrados = (() => {
+    const base = q
+      ? invitados.filter((inv) => {
+          const matchInvitado = inv.full_name.toLowerCase().includes(q);
+          const matchAcomp = (acompanantes[inv.documentId] ?? []).some((a) =>
+            a.full_name.toLowerCase().includes(q),
+          );
+          return matchInvitado || matchAcomp;
+        })
+      : invitados.slice();
+
+    return base.sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "full_name")
+        cmp = a.full_name.toLowerCase().localeCompare(b.full_name.toLowerCase());
+      else if (sortCol === "phone")
+        cmp = (a.phone ?? "").localeCompare(b.phone ?? "");
+      else if (sortCol === "unique_code")
+        cmp = a.unique_code.localeCompare(b.unique_code);
+      else if (sortCol === "pases")
+        cmp = a.confirmed_passes / (a.max_passes || 1) - b.confirmed_passes / (b.max_passes || 1);
+      else if (sortCol === "status")
+        cmp = (STATUS_ORDER[a.status] ?? 1) - (STATUS_ORDER[b.status] ?? 1);
+      else if (sortCol === "self_payed")
+        cmp = (a.self_payed ? 1 : 0) - (b.self_payed ? 1 : 0);
+      else if (sortCol === "invited_by")
+        cmp = (a.invited_by ?? "").localeCompare(b.invited_by ?? "");
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  })();
 
   const startEdit = (invitado: Guest) => {
     setEditingId(invitado.documentId);
@@ -244,6 +280,8 @@ export default function GuestManagement({
       status: "pending",
       phone: "",
       note: "",
+      self_payed: false,
+      invited_by: null,
     });
     setShowForm(true);
   };
@@ -367,6 +405,8 @@ export default function GuestManagement({
           status: formData.status || "pending",
           phone: formData.phone || null,
           note: formData.note || null,
+          self_payed: formData.self_payed ?? false,
+          invited_by: formData.invited_by ?? null,
         });
       } else if (editingId) {
         const noAsiste =
@@ -383,6 +423,8 @@ export default function GuestManagement({
           status: formData.status,
           phone: formData.phone || null,
           note: formData.note || null,
+          self_payed: formData.self_payed ?? false,
+          invited_by: formData.invited_by ?? null,
           ...(noAsiste ? { table: null } : {}),
         });
       }
@@ -454,7 +496,7 @@ export default function GuestManagement({
   const openAcompForm = (invitadoDocId: string) => {
     setShowAcompForm(invitadoDocId);
     setEditingAcompId(null);
-    setAcompForm({ full_name: "", phone: "" });
+    setAcompForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
   };
 
   const saveAcompanante = async (invitado: Guest) => {
@@ -471,10 +513,12 @@ export default function GuestManagement({
       await companionService.create(invitado.documentId, {
         full_name: acompForm.full_name.trim(),
         phone: acompForm.phone.trim() || null,
+        self_payed: acompForm.self_payed,
+        invited_by: acompForm.invited_by || null,
       });
       toast.success("Acompañante añadido");
       setShowAcompForm(null);
-      setAcompForm({ full_name: "", phone: "" });
+      setAcompForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
       await loadAcompanantes(invitado.documentId);
     } catch (err) {
       console.error("Error saving acompañante:", err);
@@ -505,12 +549,14 @@ export default function GuestManagement({
     setAcompEditForm({
       full_name: a.full_name,
       phone: a.phone ?? "",
+      self_payed: a.self_payed ?? false,
+      invited_by: a.invited_by ?? "",
     });
   };
 
   const cancelEditAcomp = () => {
     setEditingAcompId(null);
-    setAcompEditForm({ full_name: "", phone: "" });
+    setAcompEditForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
   };
 
   const saveEditAcomp = async (acompDocId: string, invitadoDocId: string) => {
@@ -523,6 +569,8 @@ export default function GuestManagement({
       await companionService.update(acompDocId, {
         full_name: acompEditForm.full_name.trim(),
         phone: acompEditForm.phone.trim() || null,
+        self_payed: acompEditForm.self_payed,
+        invited_by: acompEditForm.invited_by || null,
       });
       toast.success("Acompañante actualizado");
       setEditingAcompId(null);
@@ -684,6 +732,42 @@ export default function GuestManagement({
               </select>
             </div>
             <div>
+              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                Invitado por
+              </label>
+              <select
+                value={formData.invited_by ?? ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    invited_by: (e.target.value as "novio" | "novia") || null,
+                  })
+                }
+                className={inputCls}
+              >
+                <option value="">Sin especificar</option>
+                <option value="novio">Novio</option>
+                <option value="novia">Novia</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <input
+                type="checkbox"
+                id="guest-self-payed"
+                checked={formData.self_payed ?? false}
+                onChange={(e) =>
+                  setFormData({ ...formData, self_payed: e.target.checked })
+                }
+                className="w-4 h-4 accent-blue-600 cursor-pointer"
+              />
+              <label
+                htmlFor="guest-self-payed"
+                className="text-sm text-muted dark:text-gray-400 cursor-pointer"
+              >
+                Self payed
+              </label>
+            </div>
+            <div>
               <label className="text-sm text-muted dark:text-gray-400 block mb-2">Nota</label>
               <textarea
                 value={formData.note || ""}
@@ -720,11 +804,35 @@ export default function GuestManagement({
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="bg-linen dark:bg-gray-700 border-b border-blush-dark dark:border-gray-600">
               <tr>
-                {["Nombre", "Teléfono", "Código", "Pases", "Confirmado", "Acciones"].map((h) => (
-                  <th key={h} className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal/75 dark:text-gray-300 font-light">
-                    {h}
+                {(
+                  [
+                    { label: "Nombre", col: "full_name" },
+                    { label: "Teléfono", col: "phone" },
+                    { label: "Código", col: "unique_code" },
+                    { label: "Pases", col: "pases" },
+                    { label: "Confirmado", col: "status" },
+                    { label: "Invitado por", col: "invited_by" },
+                    { label: "Self payed", col: "self_payed" },
+                  ] as { label: string; col: SortCol }[]
+                ).map(({ label, col }) => (
+                  <th
+                    key={col}
+                    onClick={() => toggleSort(col)}
+                    className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal/75 dark:text-gray-300 font-light cursor-pointer select-none hover:text-charcoal dark:hover:text-white"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {label}
+                      {sortCol === col ? (
+                        sortDir === "asc" ? " ↑" : " ↓"
+                      ) : (
+                        <span className="opacity-30"> ↕</span>
+                      )}
+                    </span>
                   </th>
                 ))}
+                <th className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal/75 dark:text-gray-300 font-light">
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -771,6 +879,30 @@ export default function GuestManagement({
                         <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-linen dark:bg-gray-600/30 text-muted dark:text-gray-400">
                           Sin confirmar
                         </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      {invitado.invited_by ? (
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-light ${
+                          invitado.invited_by === "novio"
+                            ? "bg-blue-600/20 text-blue-700 dark:text-blue-300"
+                            : "bg-pink-600/20 text-pink-700 dark:text-pink-300"
+                        }`}>
+                          {invitado.invited_by === "novio" ? "Novio" : "Novia"}
+                        </span>
+                      ) : (
+                        <span className="text-muted/50 dark:text-gray-600 text-xs italic">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      {invitado.self_payed ? (
+                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-light bg-emerald-600/20 text-emerald-700 dark:text-emerald-300">
+                          Sí
+                        </span>
+                      ) : (
+                        <span className="text-muted/50 dark:text-gray-600 text-xs italic">—</span>
                       )}
                     </td>
 
@@ -826,7 +958,7 @@ export default function GuestManagement({
                       key={`${invitado.documentId}-acomp`}
                       className="bg-cream/60 dark:bg-gray-900/60"
                     >
-                      <td colSpan={6} className="px-4 sm:px-6 py-4">
+                      <td colSpan={8} className="px-4 sm:px-6 py-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-charcoal/75 dark:text-gray-300 font-light">
@@ -909,6 +1041,45 @@ export default function GuestManagement({
                                     className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-amber-500 focus:outline-none"
                                   />
                                 </div>
+                                <div>
+                                  <label className="text-xs text-muted dark:text-gray-400 block mb-1">
+                                    Invitado por
+                                  </label>
+                                  <select
+                                    value={acompForm.invited_by}
+                                    onChange={(e) =>
+                                      setAcompForm({
+                                        ...acompForm,
+                                        invited_by: e.target.value as "novio" | "novia" | "",
+                                      })
+                                    }
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-amber-500 focus:outline-none"
+                                  >
+                                    <option value="">Sin especificar</option>
+                                    <option value="novio">Novio</option>
+                                    <option value="novia">Novia</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-2 pt-5">
+                                  <input
+                                    type="checkbox"
+                                    id="acomp-new-self-payed"
+                                    checked={acompForm.self_payed}
+                                    onChange={(e) =>
+                                      setAcompForm({
+                                        ...acompForm,
+                                        self_payed: e.target.checked,
+                                      })
+                                    }
+                                    className="w-4 h-4 accent-amber-600 cursor-pointer"
+                                  />
+                                  <label
+                                    htmlFor="acomp-new-self-payed"
+                                    className="text-xs text-muted dark:text-gray-400 cursor-pointer"
+                                  >
+                                    Self payed
+                                  </label>
+                                </div>
                               </div>
                               <div className="flex gap-2">
                                 <button
@@ -977,6 +1148,45 @@ export default function GuestManagement({
                                             placeholder="+52 123456789"
                                             className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
                                           />
+                                        </div>
+                                        <div>
+                                          <label className="text-xs text-muted dark:text-gray-400 block mb-1">
+                                            Invitado por
+                                          </label>
+                                          <select
+                                            value={acompEditForm.invited_by}
+                                            onChange={(e) =>
+                                              setAcompEditForm({
+                                                ...acompEditForm,
+                                                invited_by: e.target.value as "novio" | "novia" | "",
+                                              })
+                                            }
+                                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
+                                          >
+                                            <option value="">Sin especificar</option>
+                                            <option value="novio">Novio</option>
+                                            <option value="novia">Novia</option>
+                                          </select>
+                                        </div>
+                                        <div className="flex items-center gap-2 pt-4">
+                                          <input
+                                            type="checkbox"
+                                            id={`acomp-edit-self-payed-${a.documentId}`}
+                                            checked={acompEditForm.self_payed}
+                                            onChange={(e) =>
+                                              setAcompEditForm({
+                                                ...acompEditForm,
+                                                self_payed: e.target.checked,
+                                              })
+                                            }
+                                            className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                          />
+                                          <label
+                                            htmlFor={`acomp-edit-self-payed-${a.documentId}`}
+                                            className="text-xs text-muted dark:text-gray-400 cursor-pointer"
+                                          >
+                                            Self payed
+                                          </label>
                                         </div>
                                       </div>
                                       <div className="flex gap-2">

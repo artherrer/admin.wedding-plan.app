@@ -1,5 +1,5 @@
 import type { Guest, Table, Companion } from "../../lib/types";
-import { BarChart, Users } from "lucide-react";
+import { BarChart, Users, CreditCard, Heart } from "lucide-react";
 
 interface AdminStatsProps {
   invitados: Guest[];
@@ -49,6 +49,15 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
   const totalPendientes = invitados.filter((i) => i.status === "pending").length;
 
   const totalPersonas = invitados.length + acompanantes.length;
+
+  const selfPayedGuests = invitados.filter((i) => i.self_payed).length;
+  const selfPayedAcomp = acompanantes.filter((a) => a.self_payed).length;
+  const totalSelfPayed = selfPayedGuests + selfPayedAcomp;
+
+  const invitadosPorNovio = invitados.filter((i) => i.invited_by === "novio").length;
+  const invitadosPorNovia = invitados.filter((i) => i.invited_by === "novia").length;
+  const acompPorNovio = acompanantes.filter((a) => a.invited_by === "novio").length;
+  const acompPorNovia = acompanantes.filter((a) => a.invited_by === "novia").length;
 
   const pasesPromedio =
     invitados.length > 0
@@ -155,6 +164,55 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
                 <span className={`text-xl sm:text-2xl font-bold ${color}`}>{val}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CARD: Self Payed + Invitado por */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <div className={card}>
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-500" />
+            <h3 className={cardTitle}>Self Payed</h3>
+          </div>
+          <div className="space-y-3">
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Invitados</span>
+              <span className="text-xl sm:text-2xl text-emerald-500 dark:text-emerald-400 font-bold">{selfPayedGuests}</span>
+            </div>
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Acompañantes</span>
+              <span className="text-xl sm:text-2xl text-emerald-500 dark:text-emerald-400 font-bold">{selfPayedAcomp}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className={rowLabel}>Total</span>
+              <span className="text-xl sm:text-2xl text-emerald-600 dark:text-emerald-300 font-bold">{totalSelfPayed}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={card}>
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-pink-400" />
+            <h3 className={cardTitle}>Invitado por</h3>
+          </div>
+          <div className="space-y-3">
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Novio (invitados)</span>
+              <span className="text-xl sm:text-2xl text-blue-500 dark:text-blue-400 font-bold">{invitadosPorNovio}</span>
+            </div>
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Novio (acomp.)</span>
+              <span className="text-xl sm:text-2xl text-blue-400 dark:text-blue-300 font-bold">{acompPorNovio}</span>
+            </div>
+            <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Novia (invitados)</span>
+              <span className="text-xl sm:text-2xl text-pink-500 dark:text-pink-400 font-bold">{invitadosPorNovia}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className={rowLabel}>Novia (acomp.)</span>
+              <span className="text-xl sm:text-2xl text-pink-400 dark:text-pink-300 font-bold">{acompPorNovia}</span>
+            </div>
           </div>
         </div>
       </div>
