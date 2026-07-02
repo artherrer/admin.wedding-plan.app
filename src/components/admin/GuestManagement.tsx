@@ -214,6 +214,7 @@ export default function GuestManagement({
   const [savingAcomp, setSavingAcomp] = useState(false);
 
   const [editingAcompId, setEditingAcompId] = useState<string | null>(null);
+  const [editingAcompGuestId, setEditingAcompGuestId] = useState<string | null>(null);
   const [acompEditForm, setAcompEditForm] = useState<{
     full_name: string;
     phone: string;
@@ -543,8 +544,9 @@ export default function GuestManagement({
     }
   };
 
-  const startEditAcomp = (a: Companion) => {
+  const startEditAcomp = (a: Companion, invitadoDocId: string) => {
     setEditingAcompId(a.documentId);
+    setEditingAcompGuestId(invitadoDocId);
     setShowAcompForm(null);
     setAcompEditForm({
       full_name: a.full_name,
@@ -556,6 +558,7 @@ export default function GuestManagement({
 
   const cancelEditAcomp = () => {
     setEditingAcompId(null);
+    setEditingAcompGuestId(null);
     setAcompEditForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
   };
 
@@ -643,9 +646,10 @@ export default function GuestManagement({
         )}
       </div>
 
-      {/* FORM INVITADO */}
+      {/* MODAL FORM INVITADO */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700 mb-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700 mb-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
           <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
             {newGuest ? "Nuevo Invitado" : "Editar Invitado"}
           </h3>
@@ -795,6 +799,7 @@ export default function GuestManagement({
               Cancelar
             </button>
           </div>
+        </div>
         </div>
       )}
 
@@ -1123,153 +1128,52 @@ export default function GuestManagement({
                             <div className="space-y-1">
                               {acompanantes[invitado.documentId]?.map((a) => (
                                 <div key={a.documentId}>
-                                  {editingAcompId === a.documentId ? (
-                                    <div className="bg-linen dark:bg-gray-800 rounded-lg p-3 border border-blue-400/50 dark:border-blue-600/50 space-y-2">
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div>
-                                          <label className="text-xs text-muted dark:text-gray-400 block mb-1">
-                                            Nombre *
-                                          </label>
-                                          <input
-                                            type="text"
-                                            value={acompEditForm.full_name}
-                                            onChange={(e) =>
-                                              setAcompEditForm({
-                                                ...acompEditForm,
-                                                full_name: e.target.value,
-                                              })
-                                            }
-                                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="text-xs text-muted dark:text-gray-400 block mb-1">
-                                            Teléfono
-                                          </label>
-                                          <input
-                                            type="tel"
-                                            value={acompEditForm.phone}
-                                            onChange={(e) =>
-                                              setAcompEditForm({
-                                                ...acompEditForm,
-                                                phone: e.target.value,
-                                              })
-                                            }
-                                            placeholder="+52 123456789"
-                                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="text-xs text-muted dark:text-gray-400 block mb-1">
-                                            Invitado por
-                                          </label>
-                                          <select
-                                            value={acompEditForm.invited_by}
-                                            onChange={(e) =>
-                                              setAcompEditForm({
-                                                ...acompEditForm,
-                                                invited_by: e.target.value as "novio" | "novia" | "",
-                                              })
-                                            }
-                                            className="w-full px-3 py-1.5 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none"
-                                          >
-                                            <option value="">Sin especificar</option>
-                                            <option value="novio">Novio</option>
-                                            <option value="novia">Novia</option>
-                                          </select>
-                                        </div>
-                                        <div className="flex items-center gap-2 pt-4">
-                                          <input
-                                            type="checkbox"
-                                            id={`acomp-edit-self-payed-${a.documentId}`}
-                                            checked={acompEditForm.self_payed}
-                                            onChange={(e) =>
-                                              setAcompEditForm({
-                                                ...acompEditForm,
-                                                self_payed: e.target.checked,
-                                              })
-                                            }
-                                            className="w-4 h-4 accent-blue-600 cursor-pointer"
-                                          />
-                                          <label
-                                            htmlFor={`acomp-edit-self-payed-${a.documentId}`}
-                                            className="text-xs text-muted dark:text-gray-400 cursor-pointer"
-                                          >
-                                            Self payed
-                                          </label>
-                                        </div>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={() =>
-                                            saveEditAcomp(
-                                              a.documentId,
-                                              invitado.documentId,
-                                            )
-                                          }
-                                          disabled={savingAcompEdit}
-                                          className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
-                                        >
-                                          <Save className="w-3 h-3" />
-                                          Guardar
-                                        </button>
-                                        <button
-                                          onClick={cancelEditAcomp}
-                                          className="flex items-center gap-1 px-3 py-1 text-xs bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors"
-                                        >
-                                          <X className="w-3 h-3" />
-                                          Cancelar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center justify-between bg-linen/50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
-                                      <div className="min-w-0">
-                                        <span className="text-sm text-charcoal dark:text-white">
-                                          {a.full_name}
+                                  <div className="flex items-center justify-between bg-linen/50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+                                    <div className="min-w-0">
+                                      <span className="text-sm text-charcoal dark:text-white">
+                                        {a.full_name}
+                                      </span>
+                                      {a.phone && (
+                                        <span className="ml-3 text-xs text-muted/70 dark:text-gray-500">
+                                          {a.phone}
                                         </span>
-                                        {a.phone && (
-                                          <span className="ml-3 text-xs text-muted/70 dark:text-gray-500">
-                                            {a.phone}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex gap-1 shrink-0 ml-2">
-                                        <button
-                                          onClick={() =>
-                                            sendWhatsApp(
-                                              a.phone ?? "",
-                                              invitado.unique_code,
-                                              a.full_name,
-                                              whatsappMessage,
-                                            )
-                                          }
-                                          title="Enviar WhatsApp"
-                                          className="p-1 text-green-500 dark:text-green-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
-                                        >
-                                          <MessageCircle className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() => startEditAcomp(a)}
-                                          title="Editar acompañante"
-                                          className="p-1 text-blue-500 dark:text-blue-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
-                                        >
-                                          <Edit2 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            deleteAcompanante(
-                                              a.documentId,
-                                              invitado.documentId,
-                                            )
-                                          }
-                                          className="p-1 text-red-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
+                                      )}
                                     </div>
-                                  )}
+                                    <div className="flex gap-1 shrink-0 ml-2">
+                                      <button
+                                        onClick={() =>
+                                          sendWhatsApp(
+                                            a.phone ?? "",
+                                            invitado.unique_code,
+                                            a.full_name,
+                                            whatsappMessage,
+                                          )
+                                        }
+                                        title="Enviar WhatsApp"
+                                        className="p-1 text-green-500 dark:text-green-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => startEditAcomp(a, invitado.documentId)}
+                                        title="Editar acompañante"
+                                        className="p-1 text-blue-500 dark:text-blue-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          deleteAcompanante(
+                                            a.documentId,
+                                            invitado.documentId,
+                                          )
+                                        }
+                                        className="p-1 text-red-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -1414,6 +1318,110 @@ export default function GuestManagement({
                 }}
                 disabled={importing}
                 className="flex items-center justify-center gap-2 px-6 py-3 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 disabled:opacity-50 text-charcoal dark:text-white rounded-lg transition-colors font-light"
+              >
+                <X className="w-4 h-4" />
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR ACOMPAÑANTE */}
+      {editingAcompId && editingAcompGuestId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700 w-full max-w-md shadow-2xl">
+            <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
+              Editar Acompañante
+            </h3>
+            <div className="grid grid-cols-1 gap-3 mb-4">
+              <div>
+                <label className="text-xs text-muted dark:text-gray-400 block mb-1">
+                  Nombre *
+                </label>
+                <input
+                  type="text"
+                  value={acompEditForm.full_name}
+                  onChange={(e) =>
+                    setAcompEditForm({
+                      ...acompEditForm,
+                      full_name: e.target.value,
+                    })
+                  }
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted dark:text-gray-400 block mb-1">
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  value={acompEditForm.phone}
+                  onChange={(e) =>
+                    setAcompEditForm({
+                      ...acompEditForm,
+                      phone: e.target.value,
+                    })
+                  }
+                  placeholder="+52 123456789"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted dark:text-gray-400 block mb-1">
+                  Invitado por
+                </label>
+                <select
+                  value={acompEditForm.invited_by}
+                  onChange={(e) =>
+                    setAcompEditForm({
+                      ...acompEditForm,
+                      invited_by: e.target.value as "novio" | "novia" | "",
+                    })
+                  }
+                  className={inputCls}
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="novio">Novio</option>
+                  <option value="novia">Novia</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="acomp-edit-self-payed-modal"
+                  checked={acompEditForm.self_payed}
+                  onChange={(e) =>
+                    setAcompEditForm({
+                      ...acompEditForm,
+                      self_payed: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
+                <label
+                  htmlFor="acomp-edit-self-payed-modal"
+                  className="text-xs text-muted dark:text-gray-400 cursor-pointer"
+                >
+                  Self payed
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() =>
+                  saveEditAcomp(editingAcompId, editingAcompGuestId)
+                }
+                disabled={savingAcompEdit}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors w-full sm:w-auto"
+              >
+                <Save className="w-4 h-4" />
+                Guardar
+              </button>
+              <button
+                onClick={cancelEditAcomp}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors w-full sm:w-auto"
               >
                 <X className="w-4 h-4" />
                 Cancelar
