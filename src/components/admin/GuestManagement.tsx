@@ -25,6 +25,7 @@ interface GuestManagementProps {
   eventDocumentId: string;
   onRefresh: () => void;
   whatsappMessage?: string | null;
+  siteUrl?: string;
 }
 
 function sendWhatsApp(
@@ -32,6 +33,7 @@ function sendWhatsApp(
   code: string,
   nombre: string,
   whatsappMessage?: string | null,
+  siteUrl?: string,
 ) {
   try {
     console.warn("sendWhatsApp called with", {
@@ -39,17 +41,19 @@ function sendWhatsApp(
       code,
       nombre,
       whatsappMessage,
+      siteUrl,
     });
     if (!whatsappMessage) {
       toast.error("No hay mensaje de WhatsApp configurado");
       return;
     }
 
-    const DETAILS_LINK = import.meta.env.VITE_SITE_URL
-    if (!DETAILS_LINK) {
+    if (!siteUrl) {
       toast.error("No hay URL del evento configurada");
+      return;
     }
-    const RSVP_LINK = DETAILS_LINK + "/invitacion/" + code;
+
+    const RSVP_LINK = siteUrl + "/invitacion/" + code;
     const clean = phone.replace(/[^\d]/g, "");
     if (!clean) {
       toast.error("No hay número telefónico registrado");
@@ -62,7 +66,7 @@ function sendWhatsApp(
       .replace("{{name}}", firstName)
       .replace("{{code}}", code)
       .replace("{{rsvp_link}}", RSVP_LINK)
-      .replace("{{details_link}}", DETAILS_LINK);
+      .replace("{{details_link}}", siteUrl);
 
     window.open(
       `https://wa.me/${clean}?text=${encodeURIComponent(message)}`,
@@ -173,9 +177,17 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
-type SortCol = "full_name" | "phone" | "unique_code" | "pases" | "status" | "self_payed" | "invited_by";
+type SortCol =
+  | "full_name"
+  | "phone"
+  | "unique_code"
+  | "pases"
+  | "status"
+  | "self_payed"
+  | "invited_by";
 
-const inputCls = "w-full px-4 py-2 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none";
+const inputCls =
+  "w-full px-4 py-2 bg-linen dark:bg-gray-700 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-600 focus:border-blue-500 focus:outline-none";
 
 export default function GuestManagement({
   invitados,
@@ -184,6 +196,7 @@ export default function GuestManagement({
   eventDocumentId,
   onRefresh,
   whatsappMessage,
+  siteUrl,
 }: GuestManagementProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<GrupoImport[] | null>(
@@ -214,7 +227,9 @@ export default function GuestManagement({
   const [savingAcomp, setSavingAcomp] = useState(false);
 
   const [editingAcompId, setEditingAcompId] = useState<string | null>(null);
-  const [editingAcompGuestId, setEditingAcompGuestId] = useState<string | null>(null);
+  const [editingAcompGuestId, setEditingAcompGuestId] = useState<string | null>(
+    null,
+  );
   const [acompEditForm, setAcompEditForm] = useState<{
     full_name: string;
     phone: string;
@@ -228,7 +243,10 @@ export default function GuestManagement({
 
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortCol(col); setSortDir("asc"); }
+    else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
   };
 
   const STATUS_ORDER = { yes: 0, pending: 1, no: 2 };
@@ -248,13 +266,17 @@ export default function GuestManagement({
     return base.sort((a, b) => {
       let cmp = 0;
       if (sortCol === "full_name")
-        cmp = a.full_name.toLowerCase().localeCompare(b.full_name.toLowerCase());
+        cmp = a.full_name
+          .toLowerCase()
+          .localeCompare(b.full_name.toLowerCase());
       else if (sortCol === "phone")
         cmp = (a.phone ?? "").localeCompare(b.phone ?? "");
       else if (sortCol === "unique_code")
         cmp = a.unique_code.localeCompare(b.unique_code);
       else if (sortCol === "pases")
-        cmp = a.confirmed_passes / (a.max_passes || 1) - b.confirmed_passes / (b.max_passes || 1);
+        cmp =
+          a.confirmed_passes / (a.max_passes || 1) -
+          b.confirmed_passes / (b.max_passes || 1);
       else if (sortCol === "status")
         cmp = (STATUS_ORDER[a.status] ?? 1) - (STATUS_ORDER[b.status] ?? 1);
       else if (sortCol === "self_payed")
@@ -497,7 +519,12 @@ export default function GuestManagement({
   const openAcompForm = (invitadoDocId: string) => {
     setShowAcompForm(invitadoDocId);
     setEditingAcompId(null);
-    setAcompForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
+    setAcompForm({
+      full_name: "",
+      phone: "",
+      self_payed: false,
+      invited_by: "",
+    });
   };
 
   const saveAcompanante = async (invitado: Guest) => {
@@ -519,7 +546,12 @@ export default function GuestManagement({
       });
       toast.success("Acompañante añadido");
       setShowAcompForm(null);
-      setAcompForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
+      setAcompForm({
+        full_name: "",
+        phone: "",
+        self_payed: false,
+        invited_by: "",
+      });
       await loadAcompanantes(invitado.documentId);
     } catch (err) {
       console.error("Error saving acompañante:", err);
@@ -559,7 +591,12 @@ export default function GuestManagement({
   const cancelEditAcomp = () => {
     setEditingAcompId(null);
     setEditingAcompGuestId(null);
-    setAcompEditForm({ full_name: "", phone: "", self_payed: false, invited_by: "" });
+    setAcompEditForm({
+      full_name: "",
+      phone: "",
+      self_payed: false,
+      invited_by: "",
+    });
   };
 
   const saveEditAcomp = async (acompDocId: string, invitadoDocId: string) => {
@@ -649,157 +686,159 @@ export default function GuestManagement({
       {/* MODAL FORM INVITADO */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700 mb-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-          <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
-            {newGuest ? "Nuevo Invitado" : "Editar Invitado"}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
-                Nombre Completo
-              </label>
-              <input
-                type="text"
-                value={formData.full_name || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, full_name: e.target.value })
-                }
-                className={inputCls}
-              />
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-blush-dark dark:border-gray-700 mb-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <h3 className="text-base sm:text-lg text-charcoal dark:text-white font-light mb-4">
+              {newGuest ? "Nuevo Invitado" : "Editar Invitado"}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Nombre Completo
+                </label>
+                <input
+                  type="text"
+                  value={formData.full_name || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, full_name: e.target.value })
+                  }
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Número Telefónico
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="+52 123456789"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Pases Máximos
+                </label>
+                <input
+                  type="number"
+                  value={formData.max_passes || 1}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      max_passes: parseInt(e.target.value) || 1,
+                    })
+                  }
+                  min="1"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Pases Confirmados
+                </label>
+                <input
+                  type="number"
+                  value={formData.confirmed_passes || 0}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmed_passes: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  min="0"
+                  max={formData.max_passes || 1}
+                  className={inputCls}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Confirmado
+                </label>
+                <select
+                  value={formData.status ?? "pending"}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as "pending" | "yes" | "no",
+                    })
+                  }
+                  className={inputCls}
+                >
+                  <option value="pending">Sin confirmar</option>
+                  <option value="yes">Sí</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Invitado por
+                </label>
+                <select
+                  value={formData.invited_by ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      invited_by: (e.target.value as "novio" | "novia") || null,
+                    })
+                  }
+                  className={inputCls}
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="novio">Novio</option>
+                  <option value="novia">Novia</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3 pt-6">
+                <input
+                  type="checkbox"
+                  id="guest-self-payed"
+                  checked={formData.self_payed ?? false}
+                  onChange={(e) =>
+                    setFormData({ ...formData, self_payed: e.target.checked })
+                  }
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
+                <label
+                  htmlFor="guest-self-payed"
+                  className="text-sm text-muted dark:text-gray-400 cursor-pointer"
+                >
+                  Self payed
+                </label>
+              </div>
+              <div>
+                <label className="text-sm text-muted dark:text-gray-400 block mb-2">
+                  Nota
+                </label>
+                <textarea
+                  value={formData.note || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, note: e.target.value })
+                  }
+                  className={inputCls}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
-                Número Telefónico
-              </label>
-              <input
-                type="tel"
-                value={formData.phone || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="+52 123456789"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
-                Pases Máximos
-              </label>
-              <input
-                type="number"
-                value={formData.max_passes || 1}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    max_passes: parseInt(e.target.value) || 1,
-                  })
-                }
-                min="1"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
-                Pases Confirmados
-              </label>
-              <input
-                type="number"
-                value={formData.confirmed_passes || 0}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    confirmed_passes: parseInt(e.target.value) || 0,
-                  })
-                }
-                min="0"
-                max={formData.max_passes || 1}
-                className={inputCls}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
-                Confirmado
-              </label>
-              <select
-                value={formData.status ?? "pending"}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    status: e.target.value as "pending" | "yes" | "no",
-                  })
-                }
-                className={inputCls}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={saveGuest}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors w-full sm:w-auto"
               >
-                <option value="pending">Sin confirmar</option>
-                <option value="yes">Sí</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">
-                Invitado por
-              </label>
-              <select
-                value={formData.invited_by ?? ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    invited_by: (e.target.value as "novio" | "novia") || null,
-                  })
-                }
-                className={inputCls}
+                <Save className="w-5 h-5" />
+                Guardar
+              </button>
+              <button
+                onClick={cancelEdit}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors w-full sm:w-auto"
               >
-                <option value="">Sin especificar</option>
-                <option value="novio">Novio</option>
-                <option value="novia">Novia</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3 pt-6">
-              <input
-                type="checkbox"
-                id="guest-self-payed"
-                checked={formData.self_payed ?? false}
-                onChange={(e) =>
-                  setFormData({ ...formData, self_payed: e.target.checked })
-                }
-                className="w-4 h-4 accent-blue-600 cursor-pointer"
-              />
-              <label
-                htmlFor="guest-self-payed"
-                className="text-sm text-muted dark:text-gray-400 cursor-pointer"
-              >
-                Self payed
-              </label>
-            </div>
-            <div>
-              <label className="text-sm text-muted dark:text-gray-400 block mb-2">Nota</label>
-              <textarea
-                value={formData.note || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, note: e.target.value })
-                }
-                className={inputCls}
-              />
+                <X className="w-5 h-5" />
+                Cancelar
+              </button>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={saveGuest}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors w-full sm:w-auto"
-            >
-              <Save className="w-5 h-5" />
-              Guardar
-            </button>
-            <button
-              onClick={cancelEdit}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-linen dark:bg-gray-700 hover:bg-blush dark:hover:bg-gray-600 text-charcoal dark:text-white rounded-lg transition-colors w-full sm:w-auto"
-            >
-              <X className="w-5 h-5" />
-              Cancelar
-            </button>
-          </div>
-        </div>
         </div>
       )}
 
@@ -828,7 +867,11 @@ export default function GuestManagement({
                     <span className="inline-flex items-center gap-1">
                       {label}
                       {sortCol === col ? (
-                        sortDir === "asc" ? " ↑" : " ↓"
+                        sortDir === "asc" ? (
+                          " ↑"
+                        ) : (
+                          " ↓"
+                        )
                       ) : (
                         <span className="opacity-30"> ↕</span>
                       )}
@@ -889,15 +932,19 @@ export default function GuestManagement({
 
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       {invitado.invited_by ? (
-                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-light ${
-                          invitado.invited_by === "novio"
-                            ? "bg-blue-600/20 text-blue-700 dark:text-blue-300"
-                            : "bg-pink-600/20 text-pink-700 dark:text-pink-300"
-                        }`}>
+                        <span
+                          className={`px-2 sm:px-3 py-1 rounded-full text-xs font-light ${
+                            invitado.invited_by === "novio"
+                              ? "bg-blue-600/20 text-blue-700 dark:text-blue-300"
+                              : "bg-pink-600/20 text-pink-700 dark:text-pink-300"
+                          }`}
+                        >
                           {invitado.invited_by === "novio" ? "Novio" : "Novia"}
                         </span>
                       ) : (
-                        <span className="text-muted/50 dark:text-gray-600 text-xs italic">—</span>
+                        <span className="text-muted/50 dark:text-gray-600 text-xs italic">
+                          —
+                        </span>
                       )}
                     </td>
 
@@ -907,7 +954,9 @@ export default function GuestManagement({
                           Sí
                         </span>
                       ) : (
-                        <span className="text-muted/50 dark:text-gray-600 text-xs italic">—</span>
+                        <span className="text-muted/50 dark:text-gray-600 text-xs italic">
+                          —
+                        </span>
                       )}
                     </td>
 
@@ -932,6 +981,7 @@ export default function GuestManagement({
                               invitado.unique_code,
                               invitado.full_name,
                               whatsappMessage,
+                              siteUrl,
                             )
                           }
                           title="Enviar WhatsApp"
@@ -1065,7 +1115,10 @@ export default function GuestManagement({
                                     onChange={(e) =>
                                       setAcompForm({
                                         ...acompForm,
-                                        invited_by: e.target.value as "novio" | "novia" | "",
+                                        invited_by: e.target.value as
+                                          | "novio"
+                                          | "novia"
+                                          | "",
                                       })
                                     }
                                     className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-charcoal dark:text-white text-sm rounded-lg border border-blush-dark dark:border-gray-600 focus:border-amber-500 focus:outline-none"
@@ -1118,7 +1171,9 @@ export default function GuestManagement({
 
                           {/* LISTA ACOMPAÑANTES */}
                           {loadingAcomp === invitado.documentId ? (
-                            <p className="text-xs text-muted/70 dark:text-gray-500">Cargando...</p>
+                            <p className="text-xs text-muted/70 dark:text-gray-500">
+                              Cargando...
+                            </p>
                           ) : acompanantes[invitado.documentId]?.length ===
                             0 ? (
                             <p className="text-xs text-muted/70 dark:text-gray-500 italic">
@@ -1147,6 +1202,7 @@ export default function GuestManagement({
                                             invitado.unique_code,
                                             a.full_name,
                                             whatsappMessage,
+                                            siteUrl,
                                           )
                                         }
                                         title="Enviar WhatsApp"
@@ -1155,7 +1211,9 @@ export default function GuestManagement({
                                         <MessageCircle className="w-3.5 h-3.5" />
                                       </button>
                                       <button
-                                        onClick={() => startEditAcomp(a, invitado.documentId)}
+                                        onClick={() =>
+                                          startEditAcomp(a, invitado.documentId)
+                                        }
                                         title="Editar acompañante"
                                         className="p-1 text-blue-500 dark:text-blue-400 hover:bg-linen dark:hover:bg-gray-700 rounded transition-colors"
                                       >
@@ -1266,7 +1324,9 @@ export default function GuestManagement({
                           {grupo.nombre}
                         </p>
                         {grupo.phone && (
-                          <p className="text-xs text-muted dark:text-gray-400">{grupo.phone}</p>
+                          <p className="text-xs text-muted dark:text-gray-400">
+                            {grupo.phone}
+                          </p>
                         )}
                       </div>
                       <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0">

@@ -518,6 +518,7 @@ export default function AdminPage() {
             eventDocumentId={eventDocumentId}
             onRefresh={handleRefresh}
             whatsappMessage={event?.whatsapp_message}
+            siteUrl={event?.site_url}
           />
         )}
 

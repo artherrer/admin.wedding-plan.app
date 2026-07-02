@@ -113,6 +113,7 @@ export interface Location {
 // ─── Event ───────────────────────────────────────────────────────────────────
 
 export interface Event extends StrapiBase {
+  site_url: string,
   name: string;
   slug?: string | null;
   main_title?: string | null;
