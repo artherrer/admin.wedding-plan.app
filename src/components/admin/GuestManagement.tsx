@@ -45,7 +45,7 @@ function sendWhatsApp(
       return;
     }
 
-    const DETAILS_LINK = import.meta.env.VITE_EVENT_URL
+    const DETAILS_LINK = import.meta.env.VITE_SITE_URL
     if (!DETAILS_LINK) {
       toast.error("No hay URL del evento configurada");
     }
@@ -973,6 +973,16 @@ export default function GuestManagement({
                             ) : (
                               <p className="text-sm text-muted/70 dark:text-gray-500 italic">
                                 Sin nota adicional
+                              </p>
+                            )}
+                            {invitado.dietary_restrictions ? (
+                              <p className="text-sm text-muted dark:text-gray-400 italic">
+                                Restricciones alimentarias:{" "}
+                                {invitado.dietary_restrictions}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-muted/70 dark:text-gray-500 italic">
+                                Sin restricciones alimentarias
                               </p>
                             )}
                           </div>

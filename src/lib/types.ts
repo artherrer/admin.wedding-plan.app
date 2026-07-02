@@ -161,6 +161,7 @@ export interface Guest extends StrapiBase {
   status: "pending" | "yes" | "no";
   phone?: string | null;
   note?: string | null;
+  dietary_restrictions?: string | null;
   self_payed?: boolean;
   invited_by?: "novio" | "novia" | null;
   /** Relación table — presente solo si se popula */
@@ -202,6 +203,7 @@ export interface GuestInput {
   status?: "pending" | "yes" | "no";
   phone?: string | null;
   note?: string | null;
+  dietary_restrictions?: string | null;
   self_payed?: boolean;
   invited_by?: "novio" | "novia" | null;
   /** documentId del evento (requerido en create) */

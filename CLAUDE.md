@@ -19,7 +19,7 @@ No hay suite de tests.
 ```
 VITE_STRAPI_API_URL=http://localhost:1337   # Base URL del backend Strapi
 VITE_EVENT_ID=<documentId>                  # documentId del evento principal (opcional)
-VITE_EVENT_URL=http://localhost:5173        # URL pública del sitio del evento
+VITE_SITE_URL=http://localhost:5173        # URL pública del sitio del evento
 ```
 
 ## Arquitectura
