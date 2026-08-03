@@ -260,7 +260,17 @@ export default function TableManagement({
           </h3>
 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 max-h-[600px] overflow-y-auto">
-            {mesas.map((mesa) => {
+            {mesas.sort((a, b) => {
+              if (isNaN(parseInt(a.name)) && isNaN(parseInt(b.name))) {
+                return a.name?.localeCompare(b.name);
+              } else if (isNaN(parseInt(a.name))) {
+                return 1;
+              } else if (isNaN(parseInt(b.name))) {
+                return -1;
+              } else {
+                return parseInt(a.name) - parseInt(b.name);
+              }
+            }).map((mesa) => {
               const mesaGuests = invitados.filter((g) => g.table?.documentId === mesa.documentId);
               const passesUsed = mesaGuests.reduce((sum, g) => sum + g.confirmed_passes, 0);
               const availablePasses = mesa.capacity - passesUsed;
