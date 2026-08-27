@@ -14,6 +14,7 @@ import {
   Search,
   Download,
   Upload,
+  Copy,
 } from "lucide-react";
 import { useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
@@ -623,6 +624,18 @@ export default function GuestManagement({
     }
   };
 
+  const copyLink = (invitado: Guest): void => {
+    try {
+      if (siteUrl && invitado.unique_code) {
+        navigator.clipboard.writeText(`${siteUrl}?q=${invitado.unique_code}`);
+        toast.success("Enlace copiado al portapapeles");
+      }
+    } catch (err) {
+      console.error("Error copying link:", err);
+      toast.error("Error al copiar enlace");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -995,6 +1008,13 @@ export default function GuestManagement({
                           className="p-2 text-blue-500 dark:text-blue-400 hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => copyLink(invitado)}
+                          className="p-2 text-yellow-500 dark:text-yellow-400 hover:bg-linen dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                          <Copy className="w-4 h-4" />
                         </button>
 
                         <button
