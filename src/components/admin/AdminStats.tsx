@@ -8,60 +8,71 @@ interface AdminStatsProps {
 }
 
 export default function AdminStats({ invitados, mesas, acompanantes }: AdminStatsProps) {
-  const docIdsConfirmados = new Set(
-    invitados.filter((i) => i.status === "yes").map((i) => i.documentId)
-  );
-
   const acompPorInvitado = acompanantes.reduce<Record<string, number>>((acc, a) => {
     const guestDocId = a.guest?.documentId;
     if (guestDocId) acc[guestDocId] = (acc[guestDocId] ?? 0) + 1;
     return acc;
   }, {});
 
+  // Número de pases por invitado = titular más sus acompañantes
+  const pasesPorInvitado = (i: Guest) => 1 + (acompPorInvitado[i.documentId] ?? 0);
+
+  // Ocupación por mesa (se mantiene como está)
   const personasPorMesa = (mesaDocId: string) => {
     const invsMesa = invitados.filter((i) => i.table?.documentId === mesaDocId);
     return invsMesa.reduce((sum, i) => sum + i.confirmed_passes, 0);
   };
 
-  const mesasOcupadas = mesas.filter((m) =>
+  const mesasAsignadas = mesas.filter((m) =>
     invitados.some((i) => i.table?.documentId === m.documentId)
   );
-  const mesasLibres = mesas.length - mesasOcupadas.length;
+  const mesasLibres = mesas.length - mesasAsignadas.length;
 
-  const invConfirmadosConMesa = invitados.filter((i) => i.status === "yes" && i.table);
-  const invConfirmadosSinMesa = invitados.filter((i) => i.status === "yes" && !i.table);
+  const totalInvitados = invitados.length + acompanantes.length;
 
-  const personasConMesa = invConfirmadosConMesa.reduce(
-    (sum, i) => sum + 1 + (acompPorInvitado[i.documentId] ?? 0),
-    0,
-  );
-  const personasSinMesa = invConfirmadosSinMesa.reduce(
-    (sum, i) => sum + 1 + (acompPorInvitado[i.documentId] ?? 0),
-    0,
-  );
+  const pasesConfirmados = invitados
+    .filter((i) => i.status === "yes")
+    .reduce((sum, i) => sum + pasesPorInvitado(i), 0);
 
-  const acompConfirmados = acompanantes.filter(
-    (a) => a.guest?.documentId && docIdsConfirmados.has(a.guest.documentId)
-  ).length;
-  const totalConfirmados = invitados.filter((i) => i.status === "yes").length;
-  const totalConfirmadosPersonas = totalConfirmados + acompConfirmados;
-  const totalRechazados = invitados.filter((i) => i.status === "no").length;
-  const totalPendientes = invitados.filter((i) => i.status === "pending").length;
+  const pasesSinConfirmar = invitados
+    .filter((i) => i.status === "pending")
+    .reduce((sum, i) => sum + pasesPorInvitado(i), 0);
 
-  const totalPersonas = invitados.length + acompanantes.length;
+  const pasesRechazados = invitados
+    .filter((i) => i.status === "no")
+    .reduce((sum, i) => sum + pasesPorInvitado(i), 0);
+
+  const pasesConMesa = invitados
+    .filter((i) => i.table != null)
+    .reduce((sum, i) => sum + pasesPorInvitado(i), 0);
+
+  const pasesSinMesa = invitados
+    .filter((i) => i.status === "yes" && !i.table)
+    .reduce((sum, i) => sum + pasesPorInvitado(i), 0);
 
   const selfPayedGuests = invitados.filter((i) => i.self_payed).length;
   const selfPayedAcomp = acompanantes.filter((a) => a.self_payed).length;
   const totalSelfPayed = selfPayedGuests + selfPayedAcomp;
 
+  const guestMap = new Map(invitados.map((i) => [i.documentId, i]));
+  const getAcompInvitedBy = (a: Companion) => {
+    if (a.invited_by) return a.invited_by;
+    if (a.guest?.documentId) {
+      return guestMap.get(a.guest.documentId)?.invited_by ?? null;
+    }
+    return null;
+  };
+
   const invitadosPorNovio = invitados.filter((i) => i.invited_by === "novio").length;
   const invitadosPorNovia = invitados.filter((i) => i.invited_by === "novia").length;
-  const acompPorNovio = acompanantes.filter((a) => a.invited_by === "novio").length;
-  const acompPorNovia = acompanantes.filter((a) => a.invited_by === "novia").length;
+  const acompPorNovio = acompanantes.filter((a) => getAcompInvitedBy(a) === "novio").length;
+  const acompPorNovia = acompanantes.filter((a) => getAcompInvitedBy(a) === "novia").length;
+  const totalPasesNovio = invitadosPorNovio + acompPorNovio;
+  const totalPasesNovia = invitadosPorNovia + acompPorNovia;
 
   const pasesPromedio =
     invitados.length > 0
-      ? (invitados.reduce((sum, i) => sum + i.confirmed_passes, 0) / invitados.length).toFixed(2)
+      ? (totalInvitados / invitados.length).toFixed(2)
       : 0;
 
   const ocupacionPorMesa = mesas.map((mesa) => ({
@@ -88,9 +99,9 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
 
           <div className="space-y-3">
             <div className={`flex justify-between items-center ${divider}`}>
-              <span className={rowLabel}>Mesas Ocupadas</span>
+              <span className={rowLabel}>Mesas Asignadas</span>
               <span className="text-xl sm:text-2xl text-green-500 dark:text-green-400 font-bold">
-                {mesasOcupadas.length}
+                {mesasAsignadas.length}
               </span>
             </div>
             <div className={`flex justify-between items-center ${divider}`}>
@@ -103,7 +114,7 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
               <span className={rowLabel}>Porcentaje</span>
               <span className="text-xl sm:text-2xl text-yellow-600 dark:text-yellow-400 font-bold">
                 {mesas.length > 0
-                  ? ((mesasOcupadas.length / mesas.length) * 100).toFixed(0)
+                  ? ((mesasAsignadas.length / mesas.length) * 100).toFixed(0)
                   : 0}%
               </span>
             </div>
@@ -119,22 +130,22 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
 
           <div className="space-y-3">
             <div className={`flex justify-between items-center ${divider}`}>
-              <span className={rowLabel}>Con Mesa</span>
+              <span className={rowLabel}>Invitados con mesa</span>
               <span className="text-xl sm:text-2xl text-green-500 dark:text-green-400 font-bold">
-                {personasConMesa}
+                {pasesConMesa}
               </span>
             </div>
             <div className={`flex justify-between items-center ${divider}`}>
               <span className={rowLabel}>Sin Mesa (confirmados)</span>
               <span className="text-xl sm:text-2xl text-orange-500 dark:text-orange-400 font-bold">
-                {personasSinMesa}
+                {pasesSinMesa}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className={rowLabel}>% Con Mesa</span>
               <span className="text-xl sm:text-2xl text-blue-500 dark:text-blue-400 font-bold">
-                {totalConfirmadosPersonas > 0
-                  ? ((personasConMesa / totalConfirmadosPersonas) * 100).toFixed(0)
+                {pasesConfirmados > 0
+                  ? ((pasesConMesa / pasesConfirmados) * 100).toFixed(0)
                   : 0}%
               </span>
             </div>
@@ -147,10 +158,12 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
 
           <div className="space-y-3">
             {[
-              { label: "Total Personas", val: totalPersonas, color: "text-blue-500 dark:text-blue-400" },
-              { label: "Confirmados", val: totalConfirmados, color: "text-green-500 dark:text-green-400" },
-              { label: "Sin Confirmar", val: totalPendientes, color: "text-orange-500 dark:text-orange-400" },
-              { label: "Rechazadas", val: totalRechazados, color: "text-red-500 dark:text-red-400" },
+              { label: "Total de invitados", val: totalInvitados, color: "text-blue-500 dark:text-blue-400" },
+              { label: "Confirmados", val: pasesConfirmados, color: "text-green-500 dark:text-green-400" },
+              { label: "Sin Confirmar", val: pasesSinConfirmar, color: "text-orange-500 dark:text-orange-400" },
+              { label: "Rechazadas", val: pasesRechazados, color: "text-red-500 dark:text-red-400" },
+              { label: "Invitados con mesa", val: pasesConMesa, color: "text-purple-500 dark:text-purple-400" },
+              { label: "Mesas asignadas", val: mesasAsignadas.length, color: "text-emerald-500 dark:text-emerald-400" },
               { label: "Acompañantes", val: acompanantes.length, color: "text-amber-600 dark:text-amber-400" },
               { label: "Capacidad Total", val: mesas.reduce((sum, m) => sum + m.capacity, 0), color: "text-cyan-600 dark:text-cyan-400" },
               { label: "Pases Promedio", val: pasesPromedio, color: "text-indigo-500 dark:text-indigo-400" },
@@ -177,15 +190,15 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
           </div>
           <div className="space-y-3">
             <div className={`flex justify-between items-center ${divider}`}>
-              <span className={rowLabel}>Invitados</span>
+              <span className={rowLabel}>Invitados (pases)</span>
               <span className="text-xl sm:text-2xl text-emerald-500 dark:text-emerald-400 font-bold">{selfPayedGuests}</span>
             </div>
             <div className={`flex justify-between items-center ${divider}`}>
-              <span className={rowLabel}>Acompañantes</span>
+              <span className={rowLabel}>Acompañantes (pases)</span>
               <span className="text-xl sm:text-2xl text-emerald-500 dark:text-emerald-400 font-bold">{selfPayedAcomp}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className={rowLabel}>Total</span>
+              <span className={rowLabel}>Total (pases)</span>
               <span className="text-xl sm:text-2xl text-emerald-600 dark:text-emerald-300 font-bold">{totalSelfPayed}</span>
             </div>
           </div>
@@ -198,16 +211,24 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
           </div>
           <div className="space-y-3">
             <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Novio (total pases)</span>
+              <span className="text-xl sm:text-2xl text-blue-500 dark:text-blue-400 font-bold">{totalPasesNovio}</span>
+            </div>
+            <div className={`flex justify-between items-center ${divider}`}>
               <span className={rowLabel}>Novio (invitados)</span>
-              <span className="text-xl sm:text-2xl text-blue-500 dark:text-blue-400 font-bold">{invitadosPorNovio}</span>
+              <span className="text-xl sm:text-2xl text-blue-400 dark:text-blue-300 font-bold">{invitadosPorNovio}</span>
             </div>
             <div className={`flex justify-between items-center ${divider}`}>
               <span className={rowLabel}>Novio (acomp.)</span>
               <span className="text-xl sm:text-2xl text-blue-400 dark:text-blue-300 font-bold">{acompPorNovio}</span>
             </div>
             <div className={`flex justify-between items-center ${divider}`}>
+              <span className={rowLabel}>Novia (total pases)</span>
+              <span className="text-xl sm:text-2xl text-pink-500 dark:text-pink-400 font-bold">{totalPasesNovia}</span>
+            </div>
+            <div className={`flex justify-between items-center ${divider}`}>
               <span className={rowLabel}>Novia (invitados)</span>
-              <span className="text-xl sm:text-2xl text-pink-500 dark:text-pink-400 font-bold">{invitadosPorNovia}</span>
+              <span className="text-xl sm:text-2xl text-pink-400 dark:text-pink-300 font-bold">{invitadosPorNovia}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className={rowLabel}>Novia (acomp.)</span>

@@ -102,14 +102,31 @@ export default function AdminPage() {
     }
   }, [isLoggedIn, eventDocumentId, loadData]);
 
+  const acompPorInvitado = acompanantes.reduce<Record<string, number>>((acc, a) => {
+    const guestDocId = a.guest?.documentId;
+    if (guestDocId) acc[guestDocId] = (acc[guestDocId] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const pasesGuest = (i: Guest) => 1 + (acompPorInvitado[i.documentId] ?? 0);
+
   const stats = {
-    totalInvitados: invitados.length,
-    totalPersonas: invitados.length + acompanantes.length,
-    confirmados: invitados.filter((i) => i.status === "yes").length,
-    rechazados: invitados.filter((i) => i.status === "no").length,
-    noConfirmados: invitados.filter((i) => i.status === "pending").length,
-    pasesConfirmados: invitados.reduce((sum, i) => sum + i.confirmed_passes, 0),
-    conMesa: invitados.filter((i) => i.table != null).length,
+    totalInvitados: invitados.length + acompanantes.length,
+    confirmados: invitados
+      .filter((i) => i.status === "yes")
+      .reduce((sum, i) => sum + pasesGuest(i), 0),
+    sinConfirmar: invitados
+      .filter((i) => i.status === "pending")
+      .reduce((sum, i) => sum + pasesGuest(i), 0),
+    rechazados: invitados
+      .filter((i) => i.status === "no")
+      .reduce((sum, i) => sum + pasesGuest(i), 0),
+    invitadosConMesa: invitados
+      .filter((i) => i.table != null)
+      .reduce((sum, i) => sum + pasesGuest(i), 0),
+    mesasAsignadas: mesas.filter((m) =>
+      invitados.some((i) => i.table?.documentId === m.documentId)
+    ).length,
   };
 
   const handleLogin = async () => {
@@ -395,11 +412,11 @@ export default function AdminPage() {
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 sm:p-6 rounded-xl text-white">
             <Users className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
             <div className="text-xl sm:text-3xl font-bold">
-              {stats.totalPersonas}
+              {stats.totalInvitados}
             </div>
-            <div className="text-xs sm:text-sm opacity-80">Total Personas</div>
+            <div className="text-xs sm:text-sm opacity-80">Total de invitados</div>
             <div className="text-xs opacity-60 mt-1">
-              {stats.totalInvitados} inv. + {acompanantes.length} acomp.
+              {invitados.length} inv. + {acompanantes.length} acomp.
             </div>
           </div>
 
@@ -409,14 +426,16 @@ export default function AdminPage() {
               {stats.confirmados}
             </div>
             <div className="text-xs sm:text-sm opacity-80">Confirmados</div>
+            <div className="text-xs opacity-60 mt-1">pases confirmados</div>
           </div>
 
           <div className="bg-gradient-to-br from-orange-600 to-orange-700 p-4 sm:p-6 rounded-xl text-white">
             <XCircle className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
             <div className="text-xl sm:text-3xl font-bold">
-              {stats.noConfirmados}
+              {stats.sinConfirmar}
             </div>
             <div className="text-xs sm:text-sm opacity-80">Sin Confirmar</div>
+            <div className="text-xs opacity-60 mt-1">pases sin confirmar</div>
           </div>
 
           <div className="bg-gradient-to-br from-red-600 to-red-700 p-4 sm:p-6 rounded-xl text-white">
@@ -425,23 +444,30 @@ export default function AdminPage() {
               {stats.rechazados}
             </div>
             <div className="text-xs sm:text-sm opacity-80">Rechazadas</div>
+            <div className="text-xs opacity-60 mt-1">pases rechazados</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-4 sm:p-6 rounded-xl text-white">
             <Users className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
             <div className="text-xl sm:text-3xl font-bold">
-              {stats.pasesConfirmados}
+              {stats.invitadosConMesa}
             </div>
             <div className="text-xs sm:text-sm opacity-80">
-              Pases Confirmados
+              Invitados con mesa
+            </div>
+            <div className="text-xs opacity-60 mt-1">
+              pases asignados
             </div>
           </div>
 
           <div className="bg-gradient-to-br from-amber-600 to-amber-700 p-4 sm:p-6 rounded-xl text-white">
             <Table2 className="w-6 h-6 sm:w-8 sm:h-8 mb-2 opacity-80" />
-            <div className="text-xl sm:text-3xl font-bold">{stats.conMesa}</div>
+            <div className="text-xl sm:text-3xl font-bold">{stats.mesasAsignadas}</div>
             <div className="text-xs sm:text-sm opacity-80">
-              Con Mesa Asignada
+              Mesas asignadas
+            </div>
+            <div className="text-xs opacity-60 mt-1">
+              de {mesas.length} mesas
             </div>
           </div>
         </div>
