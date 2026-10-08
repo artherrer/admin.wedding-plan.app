@@ -100,7 +100,15 @@ function exportCSV(
   );
 
   const rows: string[][] = [
-    ["Nombre", "Tipo", "Teléfono", "Confirmación", "Mesa"],
+    [
+      "Nombre",
+      "Tipo",
+      "Teléfono",
+      "Confirmación",
+      "Mesa",
+      "Pases Totales",
+      "Pases Confirmados",
+    ],
   ];
 
   for (const inv of invitados) {
@@ -113,6 +121,8 @@ function exportCSV(
       inv.phone ?? "",
       STATUS_LABEL[inv.status] ?? inv.status,
       mesa,
+      String(inv.max_passes ?? ""),
+      String(inv.confirmed_passes ?? ""),
     ]);
     for (const a of acompPorInvitado[inv.documentId] ?? []) {
       rows.push([
@@ -121,6 +131,8 @@ function exportCSV(
         a.phone ?? "",
         STATUS_LABEL[inv.status] ?? inv.status,
         mesa,
+        "",
+        "",
       ]);
     }
   }
