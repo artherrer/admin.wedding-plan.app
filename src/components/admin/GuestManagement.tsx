@@ -108,6 +108,7 @@ function exportCSV(
       "Mesa",
       "Pases Totales",
       "Pases Confirmados",
+      "Código",
     ],
   ];
 
@@ -123,6 +124,7 @@ function exportCSV(
       mesa,
       String(inv.max_passes ?? ""),
       String(inv.confirmed_passes ?? ""),
+      inv.unique_code ?? "",
     ]);
     for (const a of acompPorInvitado[inv.documentId] ?? []) {
       rows.push([
@@ -131,6 +133,7 @@ function exportCSV(
         a.phone ?? "",
         STATUS_LABEL[inv.status] ?? inv.status,
         mesa,
+        "",
         "",
         "",
       ]);
@@ -152,7 +155,10 @@ function exportCSV(
 type GrupoImport = {
   nombre: string;
   phone: string;
-  acomps: { nombre: string; phone: string }[];
+  codigo: string;
+  mesa: string;
+  campos: [string, string][];
+  acomps: { nombre: string; phone: string; campos: [string, string][] }[];
 };
 
 function parseCSV(text: string): string[][] {
@@ -342,10 +348,15 @@ export default function GuestManagement({
         return;
       }
 
-      const header = rows[0].map((h) => h.toLowerCase().trim());
+      const headerOriginal = rows[0].map((h) => h.trim());
+      const header = headerOriginal.map((h) => h.toLowerCase());
       const nameIdx = header.indexOf("nombre");
       const tipoIdx = header.indexOf("tipo");
       const phoneIdx = header.indexOf("teléfono");
+      const mesaIdx = header.indexOf("mesa");
+      const codeIdx = ["código", "codigo"]
+        .map((h) => header.indexOf(h))
+        .find((i) => i >= 0) ?? -1;
 
       if (nameIdx === -1 || tipoIdx === -1) {
         toast.error("Formato inválido: se requieren columnas Nombre y Tipo");
@@ -359,13 +370,27 @@ export default function GuestManagement({
         const nombre = row[nameIdx]?.trim();
         const tipo = row[tipoIdx]?.trim().toLowerCase();
         const phone = phoneIdx >= 0 ? (row[phoneIdx]?.trim() ?? "") : "";
+        const codigo = codeIdx >= 0 ? (row[codeIdx]?.trim() ?? "") : "";
+        const mesa = mesaIdx >= 0 ? (row[mesaIdx]?.trim() ?? "") : "";
         if (!nombre) continue;
 
+        const camposDe = (usados: number[]) =>
+          usados
+            .filter((i) => i >= 0 && row[i]?.trim())
+            .map((i): [string, string] => [headerOriginal[i], row[i].trim()]);
+
         if (tipo === "invitado") {
-          current = { nombre, phone, acomps: [] };
+          current = {
+            nombre,
+            phone,
+            codigo,
+            mesa,
+            campos: camposDe([phoneIdx, mesaIdx, codeIdx]),
+            acomps: [],
+          };
           grupos.push(current);
         } else if (tipo === "acompañante" && current) {
-          current.acomps.push({ nombre, phone });
+          current.acomps.push({ nombre, phone, campos: camposDe([phoneIdx]) });
         }
       }
 
@@ -394,15 +419,25 @@ export default function GuestManagement({
       setImporting(true);
       let insertados = 0;
       let errores = 0;
+      let sinMesa = 0;
+      const mesaPorNombre = new Map(
+        mesas.map((m) => [String(m.name).trim().toLowerCase(), m.documentId]),
+      );
 
       for (const grupo of grupos) {
         try {
+          const mesaDocId = grupo.mesa
+            ? mesaPorNombre.get(grupo.mesa.toLowerCase())
+            : undefined;
+          if (grupo.mesa && !mesaDocId) sinMesa++;
           const guest = await guestService.create(eventDocumentId, {
             full_name: grupo.nombre,
             max_passes: 1 + grupo.acomps.length,
             confirmed_passes: 0,
             status: "pending",
             phone: grupo.phone || null,
+            ...(grupo.codigo && { unique_code: grupo.codigo }),
+            ...(mesaDocId && { table: mesaDocId }),
           });
           insertados++;
           for (const a of grupo.acomps) {
@@ -417,7 +452,7 @@ export default function GuestManagement({
       }
 
       toast.success(
-        `Importación completa: ${insertados} invitados${errores > 0 ? `, ${errores} con error` : ""}`,
+        `Importación completa: ${insertados} invitados${errores > 0 ? `, ${errores} con error` : ""}${sinMesa > 0 ? `, ${sinMesa} con mesa no encontrada` : ""}`,
       );
       setImportPreview(null);
       setSelectedGroups(new Set());
@@ -1355,10 +1390,17 @@ export default function GuestManagement({
                         <p className="text-charcoal dark:text-white font-medium truncate">
                           {grupo.nombre}
                         </p>
-                        {grupo.phone && (
-                          <p className="text-xs text-muted dark:text-gray-400">
-                            {grupo.phone}
-                          </p>
+                        {grupo.campos.length > 0 && (
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                            {grupo.campos.map(([k, v]) => (
+                              <p
+                                key={k}
+                                className="text-xs text-muted dark:text-gray-400"
+                              >
+                                <span className="opacity-70">{k}:</span> {v}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                       <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0">
@@ -1370,18 +1412,24 @@ export default function GuestManagement({
                     {grupo.acomps.length > 0 && (
                       <div className="border-t border-blush-dark/60 dark:border-gray-700/60 mx-4 mb-3 pt-2 space-y-1.5">
                         {grupo.acomps.map((a, ai) => (
-                          <div
-                            key={ai}
-                            className="flex items-center gap-2 pl-7"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/60 shrink-0" />
-                            <p className="text-sm text-charcoal/75 dark:text-gray-300 truncate">
-                              {a.nombre}
-                            </p>
-                            {a.phone && (
-                              <p className="text-xs text-muted/70 dark:text-gray-500 ml-auto shrink-0">
-                                {a.phone}
+                          <div key={ai} className="pl-7">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/60 shrink-0" />
+                              <p className="text-sm text-charcoal/75 dark:text-gray-300 truncate">
+                                {a.nombre}
                               </p>
+                            </div>
+                            {a.campos.length > 0 && (
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 pl-3.5">
+                                {a.campos.map(([k, v]) => (
+                                  <p
+                                    key={k}
+                                    className="text-xs text-muted/70 dark:text-gray-500"
+                                  >
+                                    <span className="opacity-70">{k}:</span> {v}
+                                  </p>
+                                ))}
+                              </div>
                             )}
                           </div>
                         ))}
