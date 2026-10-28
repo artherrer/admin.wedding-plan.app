@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { guestService, companionService } from "../../lib/services";
+import {
+  guestService,
+  companionService,
+  tableService,
+} from "../../lib/services";
 import type { Guest, Table, Companion } from "../../lib/types";
 import {
   Edit2,
@@ -90,6 +94,13 @@ function exportCSV(
   acompanantes: Companion[],
 ) {
   const mesaMap = new Map(mesas.map((m) => [m.documentId, m.name]));
+  const capitanes = new Set(
+    mesas.flatMap((m) =>
+      [m.captain_guest?.documentId, m.captain_companion?.documentId].filter(
+        Boolean,
+      ),
+    ),
+  );
   const acompPorInvitado = acompanantes.reduce<Record<string, Companion[]>>(
     (acc, a) => {
       const guestDocId = a.guest?.documentId;
@@ -109,6 +120,7 @@ function exportCSV(
       "Pases Totales",
       "Pases Confirmados",
       "Código",
+      "Capitán",
     ],
   ];
 
@@ -125,6 +137,7 @@ function exportCSV(
       String(inv.max_passes ?? ""),
       String(inv.confirmed_passes ?? ""),
       inv.unique_code ?? "",
+      capitanes.has(inv.documentId) ? "Sí" : "",
     ]);
     for (const a of acompPorInvitado[inv.documentId] ?? []) {
       rows.push([
@@ -136,6 +149,7 @@ function exportCSV(
         "",
         "",
         "",
+        capitanes.has(a.documentId) ? "Sí" : "",
       ]);
     }
   }
@@ -157,9 +171,31 @@ type GrupoImport = {
   phone: string;
   codigo: string;
   mesa: string;
+  status: Guest["status"];
+  maxPasses: number;
+  confirmedPasses: number;
+  capitan: boolean;
   campos: [string, string][];
-  acomps: { nombre: string; phone: string; campos: [string, string][] }[];
+  acomps: {
+    nombre: string;
+    phone: string;
+    capitan: boolean;
+    campos: [string, string][];
+  }[];
 };
+
+// "Sí" / "No"; en blanco (o cualquier otro valor) = pendiente
+function parseStatus(value: string): Guest["status"] {
+  const v = value.trim().toLowerCase();
+  if (v === "sí" || v === "si") return "yes";
+  if (v === "no") return "no";
+  return "pending";
+}
+
+function isSi(value: string) {
+  const v = value.trim().toLowerCase();
+  return v === "sí" || v === "si";
+}
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
@@ -354,6 +390,10 @@ export default function GuestManagement({
       const tipoIdx = header.indexOf("tipo");
       const phoneIdx = header.indexOf("teléfono");
       const mesaIdx = header.indexOf("mesa");
+      const statusIdx = header.indexOf("confirmación");
+      const maxPassesIdx = header.indexOf("pases totales");
+      const confirmedPassesIdx = header.indexOf("pases confirmados");
+      const capitanIdx = header.indexOf("capitán");
       const codeIdx = ["código", "codigo"]
         .map((h) => header.indexOf(h))
         .find((i) => i >= 0) ?? -1;
@@ -369,9 +409,12 @@ export default function GuestManagement({
       for (const row of rows.slice(1)) {
         const nombre = row[nameIdx]?.trim();
         const tipo = row[tipoIdx]?.trim().toLowerCase();
-        const phone = phoneIdx >= 0 ? (row[phoneIdx]?.trim() ?? "") : "";
-        const codigo = codeIdx >= 0 ? (row[codeIdx]?.trim() ?? "") : "";
-        const mesa = mesaIdx >= 0 ? (row[mesaIdx]?.trim() ?? "") : "";
+        const cell = (idx: number) => (idx >= 0 ? (row[idx]?.trim() ?? "") : "");
+        // Quita marcas de dirección Unicode que a veces trae el teléfono
+        const phone = cell(phoneIdx).replace(/[\u200E\u200F\u202A-\u202E]/g, "");
+        const codigo = cell(codeIdx);
+        const mesa = cell(mesaIdx);
+        const capitan = isSi(cell(capitanIdx));
         if (!nombre) continue;
 
         const camposDe = (usados: number[]) =>
@@ -380,18 +423,45 @@ export default function GuestManagement({
             .map((i): [string, string] => [headerOriginal[i], row[i].trim()]);
 
         if (tipo === "invitado") {
+          const status = parseStatus(cell(statusIdx));
           current = {
             nombre,
             phone,
             codigo,
             mesa,
-            campos: camposDe([phoneIdx, mesaIdx, codeIdx]),
+            status,
+            maxPasses: parseInt(cell(maxPassesIdx)) || 0,
+            confirmedPasses: parseInt(cell(confirmedPassesIdx)) || 0,
+            capitan,
+            campos: camposDe([
+              phoneIdx,
+              statusIdx,
+              mesaIdx,
+              confirmedPassesIdx,
+              codeIdx,
+              capitanIdx,
+            ]),
             acomps: [],
           };
           grupos.push(current);
         } else if (tipo === "acompañante" && current) {
-          current.acomps.push({ nombre, phone, campos: camposDe([phoneIdx]) });
+          current.acomps.push({
+            nombre,
+            phone,
+            capitan,
+            campos: camposDe([phoneIdx, capitanIdx]),
+          });
         }
+      }
+
+      // Los pases totales nunca son menos que las personas listadas; los
+      // confirmados siguen la misma regla que la edición manual.
+      for (const g of grupos) {
+        g.maxPasses = Math.max(g.maxPasses, 1 + g.acomps.length);
+        g.confirmedPasses =
+          g.status === "yes"
+            ? Math.min(g.confirmedPasses || g.maxPasses, g.maxPasses)
+            : 0;
       }
 
       if (grupos.length === 0) {
@@ -432,19 +502,27 @@ export default function GuestManagement({
           if (grupo.mesa && !mesaDocId) sinMesa++;
           const guest = await guestService.create(eventDocumentId, {
             full_name: grupo.nombre,
-            max_passes: 1 + grupo.acomps.length,
-            confirmed_passes: 0,
-            status: "pending",
+            max_passes: grupo.maxPasses,
+            confirmed_passes: grupo.confirmedPasses,
+            status: grupo.status,
             phone: grupo.phone || null,
             ...(grupo.codigo && { unique_code: grupo.codigo }),
             ...(mesaDocId && { table: mesaDocId }),
           });
           insertados++;
+          if (grupo.capitan && mesaDocId)
+            await tableService.setCapitan(mesaDocId, "guest", guest.documentId);
           for (const a of grupo.acomps) {
-            await companionService.create(guest.documentId, {
+            const companion = await companionService.create(guest.documentId, {
               full_name: a.nombre,
               phone: a.phone || null,
             });
+            if (a.capitan && mesaDocId)
+              await tableService.setCapitan(
+                mesaDocId,
+                "companion",
+                companion.documentId,
+              );
           }
         } catch {
           errores++;
@@ -1404,8 +1482,8 @@ export default function GuestManagement({
                         )}
                       </div>
                       <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0">
-                        {1 + grupo.acomps.length}{" "}
-                        {grupo.acomps.length === 0 ? "pase" : "pases"}
+                        {grupo.maxPasses}{" "}
+                        {grupo.maxPasses === 1 ? "pase" : "pases"}
                       </span>
                     </div>
 

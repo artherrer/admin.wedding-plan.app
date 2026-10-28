@@ -14,8 +14,13 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
     return acc;
   }, {});
 
-  // Número de pases por invitado = titular más sus acompañantes
-  const pasesPorInvitado = (i: Guest) => 1 + (acompPorInvitado[i.documentId] ?? 0);
+  // Pases por invitado: confirmados si asiste, totales si no; nunca menos que
+  // las personas registradas (titular + acompañantes con nombre)
+  const pasesPorInvitado = (i: Guest) =>
+    Math.max(
+      i.status === "yes" ? i.confirmed_passes : i.max_passes,
+      1 + (acompPorInvitado[i.documentId] ?? 0),
+    );
 
   // Ocupación por mesa (se mantiene como está)
   const personasPorMesa = (mesaDocId: string) => {
@@ -28,7 +33,7 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
   );
   const mesasLibres = mesas.length - mesasAsignadas.length;
 
-  const totalInvitados = invitados.length + acompanantes.length;
+  const totalInvitados = invitados.reduce((sum, i) => sum + pasesPorInvitado(i), 0);
 
   const pasesConfirmados = invitados
     .filter((i) => i.status === "yes")
