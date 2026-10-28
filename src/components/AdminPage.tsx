@@ -7,6 +7,7 @@ import {
   eventService,
 } from "../lib/services";
 import { token } from "../lib/api";
+import { makePasesPorInvitado } from "../lib/passes";
 import type { Guest, Table, Companion, StrapiUser, Event, EventChecklistItem } from "../lib/types";
 import { Users, Table2, CheckCircle, XCircle, LogOut, ChevronDown, Calendar, ListChecks, Sun, Moon } from "lucide-react";
 import AdminStats from "./admin/AdminStats";
@@ -102,16 +103,10 @@ export default function AdminPage() {
     }
   }, [isLoggedIn, eventDocumentId, loadData]);
 
-  const acompPorInvitado = acompanantes.reduce<Record<string, number>>((acc, a) => {
-    const guestDocId = a.guest?.documentId;
-    if (guestDocId) acc[guestDocId] = (acc[guestDocId] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const pasesGuest = (i: Guest) => 1 + (acompPorInvitado[i.documentId] ?? 0);
+  const pasesGuest = makePasesPorInvitado(acompanantes);
 
   const stats = {
-    totalInvitados: invitados.length + acompanantes.length,
+    totalInvitados: invitados.reduce((sum, i) => sum + pasesGuest(i), 0),
     confirmados: invitados
       .filter((i) => i.status === "yes")
       .reduce((sum, i) => sum + pasesGuest(i), 0),
@@ -416,7 +411,7 @@ export default function AdminPage() {
             </div>
             <div className="text-xs sm:text-sm opacity-80">Total de invitados</div>
             <div className="text-xs opacity-60 mt-1">
-              {invitados.length} inv. + {acompanantes.length} acomp.
+              {invitados.length} inv. + {stats.totalInvitados - invitados.length} acomp.
             </div>
           </div>
 

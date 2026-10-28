@@ -1,4 +1,5 @@
 import type { Guest, Table, Companion } from "../../lib/types";
+import { makePasesPorInvitado } from "../../lib/passes";
 import { BarChart, Users, CreditCard, Heart } from "lucide-react";
 
 interface AdminStatsProps {
@@ -8,19 +9,7 @@ interface AdminStatsProps {
 }
 
 export default function AdminStats({ invitados, mesas, acompanantes }: AdminStatsProps) {
-  const acompPorInvitado = acompanantes.reduce<Record<string, number>>((acc, a) => {
-    const guestDocId = a.guest?.documentId;
-    if (guestDocId) acc[guestDocId] = (acc[guestDocId] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  // Pases por invitado: confirmados si asiste, totales si no; nunca menos que
-  // las personas registradas (titular + acompañantes con nombre)
-  const pasesPorInvitado = (i: Guest) =>
-    Math.max(
-      i.status === "yes" ? i.confirmed_passes : i.max_passes,
-      1 + (acompPorInvitado[i.documentId] ?? 0),
-    );
+  const pasesPorInvitado = makePasesPorInvitado(acompanantes);
 
   // Ocupación por mesa (se mantiene como está)
   const personasPorMesa = (mesaDocId: string) => {
