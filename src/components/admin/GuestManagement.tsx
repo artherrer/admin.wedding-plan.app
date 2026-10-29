@@ -88,6 +88,11 @@ const STATUS_LABEL: Record<string, string> = {
   pending: "Sin confirmar",
 };
 
+const INVITED_BY_LABEL: Record<string, string> = {
+  novio: "Novio",
+  novia: "Novia",
+};
+
 function exportCSV(
   invitados: Guest[],
   mesas: Table[],
@@ -121,6 +126,8 @@ function exportCSV(
       "Pases Confirmados",
       "Código",
       "Capitán",
+      "Invitado Por",
+      "Menor",
     ],
   ];
 
@@ -138,6 +145,8 @@ function exportCSV(
       String(inv.confirmed_passes ?? ""),
       inv.unique_code ?? "",
       capitanes.has(inv.documentId) ? "Sí" : "",
+      INVITED_BY_LABEL[inv.invited_by ?? ""] ?? "",
+      inv.is_minor ? "Sí" : "",
     ]);
     for (const a of acompPorInvitado[inv.documentId] ?? []) {
       rows.push([
@@ -148,8 +157,10 @@ function exportCSV(
         mesa,
         "",
         "",
-        "",
+        a.unique_code || a.documentId,
         capitanes.has(a.documentId) ? "Sí" : "",
+        INVITED_BY_LABEL[a.invited_by ?? inv.invited_by ?? ""] ?? "",
+        a.is_minor ? "Sí" : "",
       ]);
     }
   }
@@ -166,23 +177,40 @@ function exportCSV(
   URL.revokeObjectURL(url);
 }
 
+// Cada grupo llega ya resuelto contra los datos actuales: si el código existe
+// se actualiza ese registro y las columnas ausentes conservan su valor.
 type GrupoImport = {
+  /** documentId del invitado existente con ese código; vacío = nuevo */
+  guestDocId?: string;
   nombre: string;
   phone: string;
   codigo: string;
-  mesa: string;
+  mesaDocId: string | null;
+  mesaNoEncontrada: boolean;
   status: Guest["status"];
   maxPasses: number;
   confirmedPasses: number;
   capitan: boolean;
+  invitedBy: Guest["invited_by"];
+  isMinor: boolean;
   campos: [string, string][];
   acomps: {
+    /** documentId del acompañante existente (por su código); vacío = nuevo */
+    companionDocId?: string;
+    codigo: string;
     nombre: string;
     phone: string;
     capitan: boolean;
+    invitedBy: Companion["invited_by"];
+    isMinor: boolean;
     campos: [string, string][];
   }[];
 };
+
+function parseInvitedBy(value: string): Guest["invited_by"] {
+  const v = value.trim().toLowerCase();
+  return v === "novio" || v === "novia" ? v : null;
+}
 
 // "Sí" / "No"; en blanco (o cualquier otro valor) = pendiente
 function parseStatus(value: string): Guest["status"] {
@@ -195,6 +223,17 @@ function parseStatus(value: string): Guest["status"] {
 function isSi(value: string) {
   const v = value.trim().toLowerCase();
   return v === "sí" || v === "si";
+}
+
+// "guest:<documentId>" | "companion:<documentId>" → documentId de la mesa
+function capitanesActuales(mesas: Table[]) {
+  const map = new Map<string, string>();
+  for (const m of mesas) {
+    if (m.captain_guest) map.set(`guest:${m.captain_guest.documentId}`, m.documentId);
+    if (m.captain_companion)
+      map.set(`companion:${m.captain_companion.documentId}`, m.documentId);
+  }
+  return map;
 }
 
 function parseCSV(text: string): string[][] {
@@ -232,6 +271,28 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
+function MinorBadge() {
+  return (
+    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] align-middle bg-sky-500/20 text-sky-700 dark:text-sky-300">
+      Menor
+    </span>
+  );
+}
+
+function ImportBadge({ existe }: { existe: boolean }) {
+  return (
+    <span
+      className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-normal align-middle ${
+        existe
+          ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+          : "bg-green-600/20 text-green-700 dark:text-green-300"
+      }`}
+    >
+      {existe ? "Actualizar" : "Nuevo"}
+    </span>
+  );
+}
+
 type SortCol =
   | "full_name"
   | "phone"
@@ -266,6 +327,7 @@ export default function GuestManagement({
   const [loading, setLoading] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [selectedGuests, setSelectedGuests] = useState<Set<string>>(new Set());
 
   const [acompanantes, setAcompanantes] = useState<Record<string, Companion[]>>(
     {},
@@ -278,7 +340,14 @@ export default function GuestManagement({
     phone: string;
     self_payed: boolean;
     invited_by: "novio" | "novia" | "";
-  }>({ full_name: "", phone: "", self_payed: false, invited_by: "" });
+    is_minor: boolean;
+  }>({
+    full_name: "",
+    phone: "",
+    self_payed: false,
+    invited_by: "",
+    is_minor: false,
+  });
   const [savingAcomp, setSavingAcomp] = useState(false);
 
   const [editingAcompId, setEditingAcompId] = useState<string | null>(null);
@@ -290,7 +359,14 @@ export default function GuestManagement({
     phone: string;
     self_payed: boolean;
     invited_by: "novio" | "novia" | "";
-  }>({ full_name: "", phone: "", self_payed: false, invited_by: "" });
+    is_minor: boolean;
+  }>({
+    full_name: "",
+    phone: "",
+    self_payed: false,
+    invited_by: "",
+    is_minor: false,
+  });
   const [savingAcompEdit, setSavingAcompEdit] = useState(false);
 
   const [sortCol, setSortCol] = useState<SortCol>("full_name");
@@ -360,6 +436,7 @@ export default function GuestManagement({
       note: "",
       self_payed: false,
       invited_by: null,
+      is_minor: false,
     });
     setShowForm(true);
   };
@@ -394,6 +471,8 @@ export default function GuestManagement({
       const maxPassesIdx = header.indexOf("pases totales");
       const confirmedPassesIdx = header.indexOf("pases confirmados");
       const capitanIdx = header.indexOf("capitán");
+      const invitedByIdx = header.indexOf("invitado por");
+      const minorIdx = header.indexOf("menor");
       const codeIdx = ["código", "codigo"]
         .map((h) => header.indexOf(h))
         .find((i) => i >= 0) ?? -1;
@@ -402,6 +481,19 @@ export default function GuestManagement({
         toast.error("Formato inválido: se requieren columnas Nombre y Tipo");
         return;
       }
+
+      const invitadoPorCodigo = new Map(invitados.map((i) => [i.unique_code, i]));
+      // Por código; también por documentId (exportaciones anteriores)
+      const acompPorCodigo = new Map(
+        acompanantesGlobales.flatMap((a) => [
+          [a.documentId, a] as const,
+          ...(a.unique_code ? [[a.unique_code, a] as const] : []),
+        ]),
+      );
+      const mesaPorNombre = new Map(
+        mesas.map((m) => [String(m.name).trim().toLowerCase(), m.documentId]),
+      );
+      const capitanes = capitanesActuales(mesas);
 
       const grupos: GrupoImport[] = [];
       let current: GrupoImport | null = null;
@@ -413,8 +505,6 @@ export default function GuestManagement({
         // Quita marcas de dirección Unicode que a veces trae el teléfono
         const phone = cell(phoneIdx).replace(/[\u200E\u200F\u202A-\u202E]/g, "");
         const codigo = cell(codeIdx);
-        const mesa = cell(mesaIdx);
-        const capitan = isSi(cell(capitanIdx));
         if (!nombre) continue;
 
         const camposDe = (usados: number[]) =>
@@ -423,16 +513,45 @@ export default function GuestManagement({
             .map((i): [string, string] => [headerOriginal[i], row[i].trim()]);
 
         if (tipo === "invitado") {
-          const status = parseStatus(cell(statusIdx));
+          const existente = codigo ? invitadoPorCodigo.get(codigo) : undefined;
+          const mesaActual = existente?.table?.documentId ?? null;
+          const mesaNombre = cell(mesaIdx);
+          const mesaDocId =
+            mesaIdx < 0
+              ? mesaActual
+              : mesaNombre
+                ? (mesaPorNombre.get(mesaNombre.toLowerCase()) ?? mesaActual)
+                : null;
+          const maxPasses = parseInt(cell(maxPassesIdx));
+          const confirmedPasses = parseInt(cell(confirmedPassesIdx));
           current = {
+            guestDocId: existente?.documentId,
             nombre,
-            phone,
+            phone: phoneIdx >= 0 ? phone : (existente?.phone ?? ""),
             codigo,
-            mesa,
-            status,
-            maxPasses: parseInt(cell(maxPassesIdx)) || 0,
-            confirmedPasses: parseInt(cell(confirmedPassesIdx)) || 0,
-            capitan,
+            mesaDocId,
+            mesaNoEncontrada:
+              !!mesaNombre && !mesaPorNombre.has(mesaNombre.toLowerCase()),
+            status:
+              statusIdx >= 0
+                ? parseStatus(cell(statusIdx))
+                : (existente?.status ?? "pending"),
+            maxPasses: isNaN(maxPasses)
+              ? (existente?.max_passes ?? 0)
+              : maxPasses,
+            confirmedPasses: isNaN(confirmedPasses)
+              ? (existente?.confirmed_passes ?? 0)
+              : confirmedPasses,
+            capitan:
+              capitanIdx >= 0
+                ? isSi(cell(capitanIdx))
+                : !!existente && capitanes.has(`guest:${existente.documentId}`),
+            invitedBy:
+              invitedByIdx >= 0
+                ? parseInvitedBy(cell(invitedByIdx))
+                : (existente?.invited_by ?? null),
+            isMinor:
+              minorIdx >= 0 ? isSi(cell(minorIdx)) : !!existente?.is_minor,
             campos: camposDe([
               phoneIdx,
               statusIdx,
@@ -440,24 +559,57 @@ export default function GuestManagement({
               confirmedPassesIdx,
               codeIdx,
               capitanIdx,
+              invitedByIdx,
+              minorIdx,
             ]),
             acomps: [],
           };
           grupos.push(current);
         } else if (tipo === "acompañante" && current) {
+          const existente = codigo ? acompPorCodigo.get(codigo) : undefined;
           current.acomps.push({
+            companionDocId: existente?.documentId,
+            codigo,
             nombre,
-            phone,
-            capitan,
-            campos: camposDe([phoneIdx, capitanIdx]),
+            phone: phoneIdx >= 0 ? phone : (existente?.phone ?? ""),
+            capitan:
+              capitanIdx >= 0
+                ? isSi(cell(capitanIdx))
+                : !!existente &&
+                  capitanes.has(`companion:${existente.documentId}`),
+            // Sin valor propio, se hereda del invitado principal
+            invitedBy:
+              parseInvitedBy(cell(invitedByIdx)) ??
+              (invitedByIdx >= 0 ? null : existente?.invited_by) ??
+              current.invitedBy,
+            isMinor:
+              minorIdx >= 0 ? isSi(cell(minorIdx)) : !!existente?.is_minor,
+            campos: camposDe([codeIdx, phoneIdx, capitanIdx, minorIdx]),
           });
         }
       }
 
-      // Los pases totales nunca son menos que las personas listadas; los
+      // Los acompañantes que ya existen y no vienen en el archivo se conservan,
+      // así que también cuentan como personas del invitado.
+      const acompEnArchivo = new Set(
+        grupos.flatMap((g) => g.acomps.map((a) => a.companionDocId)),
+      );
+      const acompConservados = (guestDocId?: string) =>
+        guestDocId
+          ? acompanantesGlobales.filter(
+              (a) =>
+                a.guest?.documentId === guestDocId &&
+                !acompEnArchivo.has(a.documentId),
+            ).length
+          : 0;
+
+      // Los pases totales nunca son menos que las personas del invitado; los
       // confirmados siguen la misma regla que la edición manual.
       for (const g of grupos) {
-        g.maxPasses = Math.max(g.maxPasses, 1 + g.acomps.length);
+        g.maxPasses = Math.max(
+          g.maxPasses,
+          1 + g.acomps.length + acompConservados(g.guestDocId),
+        );
         g.confirmedPasses =
           g.status === "yes"
             ? Math.min(g.confirmedPasses || g.maxPasses, g.maxPasses)
@@ -487,50 +639,110 @@ export default function GuestManagement({
 
     try {
       setImporting(true);
-      let insertados = 0;
+      let creados = 0;
+      let actualizados = 0;
       let errores = 0;
-      let sinMesa = 0;
-      const mesaPorNombre = new Map(
-        mesas.map((m) => [String(m.name).trim().toLowerCase(), m.documentId]),
-      );
+      const sinMesa = grupos.filter((g) => g.mesaNoEncontrada).length;
+      const capitanes = capitanesActuales(mesas);
+      // Capitanía deseada de cada persona del archivo (mesa o null)
+      const personas: {
+        key: string;
+        type: "guest" | "companion";
+        docId: string;
+        mesa: string | null;
+      }[] = [];
 
       for (const grupo of grupos) {
         try {
-          const mesaDocId = grupo.mesa
-            ? mesaPorNombre.get(grupo.mesa.toLowerCase())
-            : undefined;
-          if (grupo.mesa && !mesaDocId) sinMesa++;
-          const guest = await guestService.create(eventDocumentId, {
+          const data = {
             full_name: grupo.nombre,
             max_passes: grupo.maxPasses,
             confirmed_passes: grupo.confirmedPasses,
             status: grupo.status,
             phone: grupo.phone || null,
-            ...(grupo.codigo && { unique_code: grupo.codigo }),
-            ...(mesaDocId && { table: mesaDocId }),
+            invited_by: grupo.invitedBy,
+            is_minor: grupo.isMinor,
+          };
+          let guestDocId = grupo.guestDocId;
+          if (guestDocId) {
+            await guestService.update(guestDocId, {
+              ...data,
+              table: grupo.mesaDocId,
+            });
+            actualizados++;
+          } else {
+            const guest = await guestService.create(eventDocumentId, {
+              ...data,
+              ...(grupo.codigo && { unique_code: grupo.codigo }),
+              ...(grupo.mesaDocId && { table: grupo.mesaDocId }),
+            });
+            guestDocId = guest.documentId;
+            creados++;
+          }
+          personas.push({
+            key: `guest:${guestDocId}`,
+            type: "guest",
+            docId: guestDocId,
+            mesa: grupo.capitan ? grupo.mesaDocId : null,
           });
-          insertados++;
-          if (grupo.capitan && mesaDocId)
-            await tableService.setCapitan(mesaDocId, "guest", guest.documentId);
+
           for (const a of grupo.acomps) {
-            const companion = await companionService.create(guest.documentId, {
+            const acompData = {
               full_name: a.nombre,
               phone: a.phone || null,
+              invited_by: a.invitedBy,
+              is_minor: a.isMinor,
+            };
+            const companionDocId = a.companionDocId
+              ? (
+                  await companionService.update(a.companionDocId, {
+                    ...acompData,
+                    guest: guestDocId,
+                  })
+                ).documentId
+              : (
+                  await companionService.create(guestDocId, {
+                    ...acompData,
+                    ...(a.codigo && { unique_code: a.codigo }),
+                  })
+                ).documentId;
+            personas.push({
+              key: `companion:${companionDocId}`,
+              type: "companion",
+              docId: companionDocId,
+              mesa: a.capitan ? grupo.mesaDocId : null,
             });
-            if (a.capitan && mesaDocId)
-              await tableService.setCapitan(
-                mesaDocId,
-                "companion",
-                companion.documentId,
-              );
           }
         } catch {
           errores++;
         }
       }
 
+      // Capitanes: primero se liberan las mesas que la persona ya no capitanea
+      // (salvo que otra persona del archivo las tome) y después se asignan.
+      const asignar = new Map(
+        personas
+          .filter((p) => p.mesa && capitanes.get(p.key) !== p.mesa)
+          .map((p) => [p.mesa as string, p]),
+      );
+      const liberar = new Set(
+        personas
+          .map((p) => capitanes.get(p.key))
+          .filter(
+            (mesa, i): mesa is string =>
+              !!mesa && mesa !== personas[i].mesa && !asignar.has(mesa),
+          ),
+      );
+      try {
+        for (const mesa of liberar) await tableService.clearCapitan(mesa);
+        for (const [mesa, p] of asignar)
+          await tableService.setCapitan(mesa, p.type, p.docId);
+      } catch {
+        toast.error("No se pudieron actualizar algunos capitanes");
+      }
+
       toast.success(
-        `Importación completa: ${insertados} invitados${errores > 0 ? `, ${errores} con error` : ""}${sinMesa > 0 ? `, ${sinMesa} con mesa no encontrada` : ""}`,
+        `Importación completa: ${creados} nuevos, ${actualizados} actualizados${errores > 0 ? `, ${errores} con error` : ""}${sinMesa > 0 ? `, ${sinMesa} con mesa no encontrada` : ""}`,
       );
       setImportPreview(null);
       setSelectedGroups(new Set());
@@ -556,6 +768,7 @@ export default function GuestManagement({
           note: formData.note || null,
           self_payed: formData.self_payed ?? false,
           invited_by: formData.invited_by ?? null,
+          is_minor: formData.is_minor ?? false,
         });
       } else if (editingId) {
         const noAsiste =
@@ -574,6 +787,7 @@ export default function GuestManagement({
           note: formData.note || null,
           self_payed: formData.self_payed ?? false,
           invited_by: formData.invited_by ?? null,
+          is_minor: formData.is_minor ?? false,
           ...(noAsiste ? { table: null } : {}),
         });
       }
@@ -603,6 +817,47 @@ export default function GuestManagement({
     } catch (err) {
       console.error("Error deleting guest:", err);
       toast.error("Error al eliminar el invitado");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelectGuest = (documentId: string) =>
+    setSelectedGuests((prev) => {
+      const next = new Set(prev);
+      if (next.has(documentId)) next.delete(documentId);
+      else next.add(documentId);
+      return next;
+    });
+
+  const deleteSelectedGuests = async () => {
+    const docIds = invitados
+      .filter((i) => selectedGuests.has(i.documentId))
+      .map((i) => i.documentId);
+    if (docIds.length === 0) return;
+    if (
+      !window.confirm(
+        `¿Eliminar ${docIds.length} invitado${docIds.length !== 1 ? "s" : ""}? Se eliminarán también sus acompañantes.`,
+      )
+    )
+      return;
+    try {
+      setLoading(true);
+      const results = await Promise.allSettled(
+        docIds.map((id) => guestService.remove(id)),
+      );
+      const errores = results.filter((r) => r.status === "rejected").length;
+      const eliminados = docIds.length - errores;
+      if (eliminados > 0)
+        toast.success(
+          `${eliminados} invitado${eliminados !== 1 ? "s" : ""} eliminado${eliminados !== 1 ? "s" : ""}`,
+        );
+      if (errores > 0)
+        toast.error(`${errores} invitado${errores !== 1 ? "s" : ""} no se pudo eliminar`);
+      setSelectedGuests(
+        new Set(docIds.filter((_, i) => results[i].status === "rejected")),
+      );
+      onRefresh();
     } finally {
       setLoading(false);
     }
@@ -650,6 +905,7 @@ export default function GuestManagement({
       phone: "",
       self_payed: false,
       invited_by: "",
+      is_minor: false,
     });
   };
 
@@ -669,6 +925,7 @@ export default function GuestManagement({
         phone: acompForm.phone.trim() || null,
         self_payed: acompForm.self_payed,
         invited_by: acompForm.invited_by || null,
+        is_minor: acompForm.is_minor,
       });
       toast.success("Acompañante añadido");
       setShowAcompForm(null);
@@ -677,6 +934,7 @@ export default function GuestManagement({
         phone: "",
         self_payed: false,
         invited_by: "",
+        is_minor: false,
       });
       await loadAcompanantes(invitado.documentId);
     } catch (err) {
@@ -711,6 +969,7 @@ export default function GuestManagement({
       phone: a.phone ?? "",
       self_payed: a.self_payed ?? false,
       invited_by: a.invited_by ?? "",
+      is_minor: a.is_minor ?? false,
     });
   };
 
@@ -722,6 +981,7 @@ export default function GuestManagement({
       phone: "",
       self_payed: false,
       invited_by: "",
+      is_minor: false,
     });
   };
 
@@ -737,6 +997,7 @@ export default function GuestManagement({
         phone: acompEditForm.phone.trim() || null,
         self_payed: acompEditForm.self_payed,
         invited_by: acompEditForm.invited_by || null,
+        is_minor: acompEditForm.is_minor,
       });
       toast.success("Acompañante actualizado");
       setEditingAcompId(null);
@@ -802,21 +1063,34 @@ export default function GuestManagement({
       </div>
 
       {/* BÚSQUEDA */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted dark:text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar invitado o acompañante..."
-          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-700 focus:border-blue-500 focus:outline-none text-sm placeholder-muted/50 dark:placeholder-gray-500"
-        />
-        {search && (
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted dark:text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar invitado o acompañante..."
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 text-charcoal dark:text-white rounded-lg border border-blush-dark dark:border-gray-700 focus:border-blue-500 focus:outline-none text-sm placeholder-muted/50 dark:placeholder-gray-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted dark:text-gray-400 hover:text-charcoal dark:hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        {selectedGuests.size > 0 && (
           <button
-            onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted dark:text-gray-400 hover:text-charcoal dark:hover:text-white"
+            onClick={deleteSelectedGuests}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm whitespace-nowrap"
           >
-            <X className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" />
+            Eliminar {selectedGuests.size} seleccionado
+            {selectedGuests.size !== 1 ? "s" : ""}
           </button>
         )}
       </div>
@@ -946,6 +1220,23 @@ export default function GuestManagement({
                   Self payed
                 </label>
               </div>
+              <div className="flex items-center gap-3 pt-6">
+                <input
+                  type="checkbox"
+                  id="guest-is-minor"
+                  checked={formData.is_minor ?? false}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_minor: e.target.checked })
+                  }
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
+                <label
+                  htmlFor="guest-is-minor"
+                  className="text-sm text-muted dark:text-gray-400 cursor-pointer"
+                >
+                  Menor (platillo de menor)
+                </label>
+              </div>
               <div>
                 <label className="text-sm text-muted dark:text-gray-400 block mb-2">
                   Nota
@@ -986,6 +1277,27 @@ export default function GuestManagement({
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="bg-linen dark:bg-gray-700 border-b border-blush-dark dark:border-gray-600">
               <tr>
+                <th className="pl-4 sm:pl-6 py-3 sm:py-4 w-0">
+                  <input
+                    type="checkbox"
+                    aria-label="Seleccionar todos los invitados visibles"
+                    checked={
+                      invitadosFiltrados.length > 0 &&
+                      invitadosFiltrados.every((i) =>
+                        selectedGuests.has(i.documentId),
+                      )
+                    }
+                    onChange={(e) => {
+                      const next = new Set(selectedGuests);
+                      for (const i of invitadosFiltrados) {
+                        if (e.target.checked) next.add(i.documentId);
+                        else next.delete(i.documentId);
+                      }
+                      setSelectedGuests(next);
+                    }}
+                    className="accent-blue-600"
+                  />
+                </th>
                 {(
                   [
                     { label: "Nombre", col: "full_name" },
@@ -1028,8 +1340,18 @@ export default function GuestManagement({
                     key={invitado.documentId}
                     className="border-b border-blush-dark/50 dark:border-gray-700 hover:bg-linen/50 dark:hover:bg-gray-700/50"
                   >
+                    <td className="pl-4 sm:pl-6 py-3 sm:py-4">
+                      <input
+                        type="checkbox"
+                        aria-label={`Seleccionar ${invitado.full_name}`}
+                        checked={selectedGuests.has(invitado.documentId)}
+                        onChange={() => toggleSelectGuest(invitado.documentId)}
+                        className="accent-blue-600"
+                      />
+                    </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4 text-charcoal dark:text-white whitespace-nowrap">
                       {invitado.full_name}
+                      {invitado.is_minor && <MinorBadge />}
                     </td>
 
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
@@ -1158,7 +1480,7 @@ export default function GuestManagement({
                       key={`${invitado.documentId}-acomp`}
                       className="bg-cream/60 dark:bg-gray-900/60"
                     >
-                      <td colSpan={8} className="px-4 sm:px-6 py-4">
+                      <td colSpan={9} className="px-4 sm:px-6 py-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-charcoal/75 dark:text-gray-300 font-light">
@@ -1293,6 +1615,26 @@ export default function GuestManagement({
                                     Self payed
                                   </label>
                                 </div>
+                                <div className="flex items-center gap-2 pt-5">
+                                  <input
+                                    type="checkbox"
+                                    id="acomp-new-is-minor"
+                                    checked={acompForm.is_minor}
+                                    onChange={(e) =>
+                                      setAcompForm({
+                                        ...acompForm,
+                                        is_minor: e.target.checked,
+                                      })
+                                    }
+                                    className="w-4 h-4 accent-amber-600 cursor-pointer"
+                                  />
+                                  <label
+                                    htmlFor="acomp-new-is-minor"
+                                    className="text-xs text-muted dark:text-gray-400 cursor-pointer"
+                                  >
+                                    Menor
+                                  </label>
+                                </div>
                               </div>
                               <div className="flex gap-2">
                                 <button
@@ -1333,6 +1675,7 @@ export default function GuestManagement({
                                       <span className="text-sm text-charcoal dark:text-white">
                                         {a.full_name}
                                       </span>
+                                      {a.is_minor && <MinorBadge />}
                                       {a.phone && (
                                         <span className="ml-3 text-xs text-muted/70 dark:text-gray-500">
                                           {a.phone}
@@ -1467,6 +1810,7 @@ export default function GuestManagement({
                       <div className="flex-1 min-w-0">
                         <p className="text-charcoal dark:text-white font-medium truncate">
                           {grupo.nombre}
+                          <ImportBadge existe={!!grupo.guestDocId} />
                         </p>
                         {grupo.campos.length > 0 && (
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
@@ -1495,6 +1839,7 @@ export default function GuestManagement({
                               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/60 shrink-0" />
                               <p className="text-sm text-charcoal/75 dark:text-gray-300 truncate">
                                 {a.nombre}
+                                <ImportBadge existe={!!a.companionDocId} />
                               </p>
                             </div>
                             {a.campos.length > 0 && (
@@ -1623,6 +1968,26 @@ export default function GuestManagement({
                   className="text-xs text-muted dark:text-gray-400 cursor-pointer"
                 >
                   Self payed
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="acomp-edit-is-minor-modal"
+                  checked={acompEditForm.is_minor}
+                  onChange={(e) =>
+                    setAcompEditForm({
+                      ...acompEditForm,
+                      is_minor: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
+                <label
+                  htmlFor="acomp-edit-is-minor-modal"
+                  className="text-xs text-muted dark:text-gray-400 cursor-pointer"
+                >
+                  Menor
                 </label>
               </div>
             </div>

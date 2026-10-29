@@ -143,8 +143,11 @@ export interface Event extends StrapiBase {
 
 export interface Companion extends StrapiBase {
   full_name: string;
+  /** Código alfanumérico generado por el backend */
+  unique_code?: string | null;
   phone?: string | null;
   self_payed?: boolean;
+  is_minor?: boolean;
   invited_by?: "novio" | "novia" | null;
   /** Relación guest — presente solo si se popula */
   guest?: Pick<Guest, "id" | "documentId" | "full_name"> | null;
@@ -164,6 +167,7 @@ export interface Guest extends StrapiBase {
   note?: string | null;
   dietary_restrictions?: string | null;
   self_payed?: boolean;
+  is_minor?: boolean;
   invited_by?: "novio" | "novia" | null;
   /** Relación table — presente solo si se popula */
   table?: Pick<Table, "id" | "documentId" | "name"> | null;
@@ -206,6 +210,7 @@ export interface GuestInput {
   note?: string | null;
   dietary_restrictions?: string | null;
   self_payed?: boolean;
+  is_minor?: boolean;
   invited_by?: "novio" | "novia" | null;
   /** documentId del evento (requerido en create) */
   event?: string;
@@ -215,8 +220,11 @@ export interface GuestInput {
 
 export interface CompanionInput {
   full_name: string;
+  /** Opcional en create: si se omite, el backend lo genera */
+  unique_code?: string;
   phone?: string | null;
   self_payed?: boolean;
+  is_minor?: boolean;
   invited_by?: "novio" | "novia" | null;
   /** documentId del invitado (requerido en create) */
   guest?: string;

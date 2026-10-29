@@ -44,6 +44,10 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
     .filter((i) => i.status === "yes" && !i.table)
     .reduce((sum, i) => sum + pasesPorInvitado(i), 0);
 
+  const menores =
+    invitados.filter((i) => i.is_minor).length +
+    acompanantes.filter((a) => a.is_minor).length;
+
   const selfPayedGuests = invitados.filter((i) => i.self_payed).length;
   const selfPayedAcomp = acompanantes.filter((a) => a.self_payed).length;
   const totalSelfPayed = selfPayedGuests + selfPayedAcomp;
@@ -159,6 +163,7 @@ export default function AdminStats({ invitados, mesas, acompanantes }: AdminStat
               { label: "Invitados con mesa", val: pasesConMesa, color: "text-purple-500 dark:text-purple-400" },
               { label: "Mesas asignadas", val: mesasAsignadas.length, color: "text-emerald-500 dark:text-emerald-400" },
               { label: "Acompañantes", val: acompanantes.length, color: "text-amber-600 dark:text-amber-400" },
+              { label: "Menores (platillo)", val: menores, color: "text-sky-600 dark:text-sky-400" },
               { label: "Capacidad Total", val: mesas.reduce((sum, m) => sum + m.capacity, 0), color: "text-cyan-600 dark:text-cyan-400" },
               { label: "Pases Promedio", val: pasesPromedio, color: "text-indigo-500 dark:text-indigo-400" },
               { label: "Mesas", val: mesas.length, color: "text-pink-500 dark:text-pink-400" },

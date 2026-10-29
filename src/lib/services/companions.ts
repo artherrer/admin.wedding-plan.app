@@ -46,7 +46,7 @@ export async function create(
 
 export async function update(
   documentId: string,
-  input: Partial<Omit<CompanionInput, 'guest'>>,
+  input: Partial<CompanionInput>,
 ): Promise<Companion> {
   const res = await api.put<StrapiSingleResponse<Companion>>(
     `/companions/${documentId}`,
