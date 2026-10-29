@@ -128,6 +128,7 @@ function exportCSV(
       "Capitán",
       "Invitado Por",
       "Menor",
+      "Notas",
     ],
   ];
 
@@ -147,6 +148,7 @@ function exportCSV(
       capitanes.has(inv.documentId) ? "Sí" : "",
       INVITED_BY_LABEL[inv.invited_by ?? ""] ?? "",
       inv.is_minor ? "Sí" : "",
+      inv.note ?? "",
     ]);
     for (const a of acompPorInvitado[inv.documentId] ?? []) {
       rows.push([
@@ -161,6 +163,7 @@ function exportCSV(
         capitanes.has(a.documentId) ? "Sí" : "",
         INVITED_BY_LABEL[a.invited_by ?? inv.invited_by ?? ""] ?? "",
         a.is_minor ? "Sí" : "",
+        "",
       ]);
     }
   }
@@ -193,6 +196,10 @@ type GrupoImport = {
   capitan: boolean;
   invitedBy: Guest["invited_by"];
   isMinor: boolean;
+  note: string;
+  /** Nuevo, o existente con algún campo distinto */
+  cambia: boolean;
+  /** Nuevo: columnas del archivo; existente: solo los campos que cambian */
   campos: [string, string][];
   acomps: {
     /** documentId del acompañante existente (por su código); vacío = nuevo */
@@ -203,6 +210,7 @@ type GrupoImport = {
     capitan: boolean;
     invitedBy: Companion["invited_by"];
     isMinor: boolean;
+    cambia: boolean;
     campos: [string, string][];
   }[];
 };
@@ -218,6 +226,13 @@ function parseStatus(value: string): Guest["status"] {
   if (v === "sí" || v === "si") return "yes";
   if (v === "no") return "no";
   return "pending";
+}
+
+// [campo, valor nuevo, valor actual] → solo los que cambian, con el valor nuevo
+function diferencias(campos: [string, string, string][]): [string, string][] {
+  return campos
+    .filter(([, nuevo, actual]) => nuevo !== actual)
+    .map(([k, nuevo]) => [k, nuevo || "—"]);
 }
 
 function isSi(value: string) {
@@ -279,16 +294,18 @@ function MinorBadge() {
   );
 }
 
-function ImportBadge({ existe }: { existe: boolean }) {
+function ImportBadge({ existe, cambia }: { existe: boolean; cambia: boolean }) {
   return (
     <span
       className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-normal align-middle ${
-        existe
-          ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-          : "bg-green-600/20 text-green-700 dark:text-green-300"
+        !existe
+          ? "bg-green-600/20 text-green-700 dark:text-green-300"
+          : cambia
+            ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+            : "bg-gray-500/15 text-muted dark:text-gray-400"
       }`}
     >
-      {existe ? "Actualizar" : "Nuevo"}
+      {!existe ? "Nuevo" : cambia ? "Actualizar" : "Sin cambios"}
     </span>
   );
 }
@@ -473,6 +490,9 @@ export default function GuestManagement({
       const capitanIdx = header.indexOf("capitán");
       const invitedByIdx = header.indexOf("invitado por");
       const minorIdx = header.indexOf("menor");
+      const notesIdx = ["notas", "observaciones"]
+        .map((h) => header.indexOf(h))
+        .find((i) => i >= 0) ?? -1;
       const codeIdx = ["código", "codigo"]
         .map((h) => header.indexOf(h))
         .find((i) => i >= 0) ?? -1;
@@ -552,6 +572,8 @@ export default function GuestManagement({
                 : (existente?.invited_by ?? null),
             isMinor:
               minorIdx >= 0 ? isSi(cell(minorIdx)) : !!existente?.is_minor,
+            note: notesIdx >= 0 ? cell(notesIdx) : (existente?.note ?? ""),
+            cambia: true,
             campos: camposDe([
               phoneIdx,
               statusIdx,
@@ -561,6 +583,7 @@ export default function GuestManagement({
               capitanIdx,
               invitedByIdx,
               minorIdx,
+              notesIdx,
             ]),
             acomps: [],
           };
@@ -584,6 +607,7 @@ export default function GuestManagement({
               current.invitedBy,
             isMinor:
               minorIdx >= 0 ? isSi(cell(minorIdx)) : !!existente?.is_minor,
+            cambia: true,
             campos: camposDe([codeIdx, phoneIdx, capitanIdx, minorIdx]),
           });
         }
@@ -621,8 +645,60 @@ export default function GuestManagement({
         return;
       }
 
-      setImportPreview(grupos);
-      setSelectedGroups(new Set(grupos.map((_, i) => i)));
+      // Los registros existentes solo muestran (y envían) lo que cambia
+      const invitadoPorDocId = new Map(invitados.map((i) => [i.documentId, i]));
+      const mesaNombre = (docId?: string | null) =>
+        docId ? String(mesas.find((m) => m.documentId === docId)?.name ?? "") : "";
+      const si = (v: boolean) => (v ? "Sí" : "");
+      const porLabel = (v?: string | null) => INVITED_BY_LABEL[v ?? ""] ?? "";
+      for (const g of grupos) {
+        const actual = g.guestDocId ? invitadoPorDocId.get(g.guestDocId) : undefined;
+        if (actual) {
+          g.campos = diferencias([
+            ["Nombre", g.nombre, actual.full_name],
+            ["Teléfono", g.phone, actual.phone ?? ""],
+            ["Mesa", mesaNombre(g.mesaDocId), mesaNombre(actual.table?.documentId)],
+            ["Confirmación", STATUS_LABEL[g.status], STATUS_LABEL[actual.status]],
+            ["Pases Totales", String(g.maxPasses), String(actual.max_passes)],
+            ["Pases Confirmados", String(g.confirmedPasses), String(actual.confirmed_passes)],
+            ["Capitán", si(g.capitan), si(capitanes.has(`guest:${actual.documentId}`))],
+            ["Invitado Por", porLabel(g.invitedBy), porLabel(actual.invited_by)],
+            ["Menor", si(g.isMinor), si(!!actual.is_minor)],
+            ["Notas", g.note, actual.note ?? ""],
+          ]);
+          g.cambia = g.campos.length > 0;
+        }
+        for (const a of g.acomps) {
+          const actualA = a.companionDocId
+            ? acompPorCodigo.get(a.companionDocId)
+            : undefined;
+          if (!actualA) continue;
+          a.campos = diferencias([
+            ["Nombre", a.nombre, actualA.full_name],
+            ["Teléfono", a.phone, actualA.phone ?? ""],
+            [
+              "Invitado de",
+              g.nombre,
+              actualA.guest?.documentId === g.guestDocId ? g.nombre : "otro invitado",
+            ],
+            ["Capitán", si(a.capitan), si(capitanes.has(`companion:${actualA.documentId}`))],
+            ["Invitado Por", porLabel(a.invitedBy), porLabel(actualA.invited_by)],
+            ["Menor", si(a.isMinor), si(!!actualA.is_minor)],
+          ]);
+          a.cambia = a.campos.length > 0;
+        }
+      }
+
+      const conCambios = grupos.filter(
+        (g) => g.cambia || g.acomps.some((a) => a.cambia),
+      );
+      if (conCambios.length === 0) {
+        toast("El archivo no tiene cambios");
+        return;
+      }
+
+      setImportPreview(conCambios);
+      setSelectedGroups(new Set(conCambios.map((_, i) => i)));
     } catch (err) {
       console.error("Error parsing CSV:", err);
       toast.error("Error al leer el archivo");
@@ -662,9 +738,12 @@ export default function GuestManagement({
             phone: grupo.phone || null,
             invited_by: grupo.invitedBy,
             is_minor: grupo.isMinor,
+            note: grupo.note || null,
           };
           let guestDocId = grupo.guestDocId;
-          if (guestDocId) {
+          if (guestDocId && !grupo.cambia) {
+            // Solo cambian sus acompañantes
+          } else if (guestDocId) {
             await guestService.update(guestDocId, {
               ...data,
               table: grupo.mesaDocId,
@@ -687,6 +766,7 @@ export default function GuestManagement({
           });
 
           for (const a of grupo.acomps) {
+            if (!a.cambia) continue;
             const acompData = {
               full_name: a.nombre,
               phone: a.phone || null,
@@ -1810,7 +1890,10 @@ export default function GuestManagement({
                       <div className="flex-1 min-w-0">
                         <p className="text-charcoal dark:text-white font-medium truncate">
                           {grupo.nombre}
-                          <ImportBadge existe={!!grupo.guestDocId} />
+                          <ImportBadge
+                            existe={!!grupo.guestDocId}
+                            cambia={grupo.cambia}
+                          />
                         </p>
                         {grupo.campos.length > 0 && (
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
@@ -1831,15 +1914,15 @@ export default function GuestManagement({
                       </span>
                     </div>
 
-                    {grupo.acomps.length > 0 && (
+                    {grupo.acomps.some((a) => a.cambia) && (
                       <div className="border-t border-blush-dark/60 dark:border-gray-700/60 mx-4 mb-3 pt-2 space-y-1.5">
-                        {grupo.acomps.map((a, ai) => (
+                        {grupo.acomps.filter((a) => a.cambia).map((a, ai) => (
                           <div key={ai} className="pl-7">
                             <div className="flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400/60 shrink-0" />
                               <p className="text-sm text-charcoal/75 dark:text-gray-300 truncate">
                                 {a.nombre}
-                                <ImportBadge existe={!!a.companionDocId} />
+                                <ImportBadge existe={!!a.companionDocId} cambia />
                               </p>
                             </div>
                             {a.campos.length > 0 && (
